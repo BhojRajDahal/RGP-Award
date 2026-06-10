@@ -23,6 +23,8 @@ const isMimeExtConsistent = (file) => {
   return (map[file.mimetype] || []).includes(ext);
 };
 
+const APPLICATION_MAX_FILE_SIZE = 200 * 1024; // 200KB per application file
+const APPLICATION_MAX_FILE_SIZE_LABEL = '200KB';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -113,7 +115,7 @@ export const uploadPhoto = multer({
   storage: photoStorage,
   fileFilter: photoFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: APPLICATION_MAX_FILE_SIZE
   }
 });
 
@@ -121,7 +123,7 @@ export const uploadFile = multer({
   storage: fileStorage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: APPLICATION_MAX_FILE_SIZE
   }
 });
 
@@ -130,7 +132,7 @@ export const uploadWinnerPhoto = multer({
   storage: winnerPhotoStorage,
   fileFilter: photoFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: APPLICATION_MAX_FILE_SIZE
   }
 });
 
@@ -173,66 +175,57 @@ const allFileFilter = (req, file, cb) => {
   }
 };
 
-// Maximum total file size allowed per user submission (10MB)
-const MAX_TOTAL_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+const removeUploadedFiles = (files) => {
+  files.forEach(file => {
+    const filePath = path.join(
+      isImageFile(file.mimetype) ? photosDir : filesDir,
+      file.filename
+    );
+    fs.promises
+      .unlink(filePath)
+      .catch((deleteError) => {
+        if (deleteError?.code !== 'ENOENT') {
+          console.error(`[Upload] Error deleting file ${filePath}:`, deleteError);
+        }
+      });
+  });
+};
 
 // Upload middleware that accepts any number of files with dynamic field names
-// Validates that the total size of all files does not exceed 10MB
+// Validates that each application file does not exceed 200KB
 export const getUploadMiddleware = () => {
   const upload = multer({
     storage: dynamicStorage,
     fileFilter: allFileFilter,
     limits: {
-      fileSize: 10 * 1024 * 1024 // 10MB per file (individual file limit)
+      fileSize: APPLICATION_MAX_FILE_SIZE
     }
   });
 
-  // Return middleware chain that validates total file size
+  // Return middleware chain with a user-friendly file size error
   return (req, res, next) => {
     // First, process files with multer
     upload.any()(req, res, (err) => {
       if (err) {
-        // If multer error (e.g., file too large, invalid type), pass it along
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            msg: `Each uploaded file must be ${APPLICATION_MAX_FILE_SIZE_LABEL} or less.`
+          });
+        }
+
+        // If multer error (e.g., invalid type), pass it along
         return next(err);
       }
 
-      // After multer processes files, check total size
       const files = req.files || [];
-      
-      if (files.length === 0) {
-        // No files uploaded, proceed
-        return next();
-      }
-
-      // Calculate total size of all files
-      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-
-      // Check if total size exceeds limit
-      if (totalSize > MAX_TOTAL_FILE_SIZE) {
-        // Delete all uploaded files since they exceed the limit
-        files.forEach(file => {
-          const filePath = path.join(
-            isImageFile(file.mimetype) ? photosDir : filesDir,
-            file.filename
-          );
-          fs.promises
-            .unlink(filePath)
-            .then(() => console.log(`[Upload] Deleted file exceeding total size limit: ${filePath}`))
-            .catch((deleteError) => {
-              // Don't block request lifecycle on cleanup
-              if (deleteError?.code !== 'ENOENT') {
-                console.error(`[Upload] Error deleting file ${filePath}:`, deleteError);
-              }
-            });
-        });
-
-        // Return error
+      const oversizedFile = files.find(file => file.size > APPLICATION_MAX_FILE_SIZE);
+      if (oversizedFile) {
+        removeUploadedFiles(files);
         return res.status(400).json({
-          msg: `Total file size exceeds the limit. The combined size of all files must not exceed 10MB. Current total: ${(totalSize / (1024 * 1024)).toFixed(2)}MB`
+          msg: `Each uploaded file must be ${APPLICATION_MAX_FILE_SIZE_LABEL} or less.`
         });
       }
 
-      // Total size is within limit, proceed
       next();
     });
   };

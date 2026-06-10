@@ -21,6 +21,12 @@ import { isImageFile } from '../middleware/upload.js';
 import { enqueueRejectionEmail } from '../queue/emailQueue.js';
 import { cacheKey, getCachedJson, setCachedJson } from './cacheService.js';
 
+const withPrizeSpecificFieldAlias = (application) => ({
+    ...application,
+    prize_specific_field_values:
+        application.prize_specific_field_values || application.specific_field_values || [],
+});
+
 // Field Services
 export const getCommonFieldsService = async () => {
     const key = cacheKey('fields', 'common');
@@ -86,7 +92,7 @@ export const submitApplicationService = async (user_id, prize_id, common_field_v
 
     // Return the complete application with fields
     const completeApplication = await getApplicationWithFields(applicationId);
-    return completeApplication;
+    return withPrizeSpecificFieldAlias(completeApplication);
 };
 
 export const getAllApplicationsService = async ({ page = 1, limit = 50 } = {}) => {
@@ -120,24 +126,27 @@ export const getAllApplicationsService = async ({ page = 1, limit = 50 } = {}) =
         specificByAppId.get(appId).push(row);
     }
 
-    const items = applications.map((app) => ({
-        application_id: app.application_id,
-        user_id: app.user_id,
-        prize_id: app.prize_id,
-        status: app.status,
-        submitted_at: app.submitted_at || app.created_at,
-        created_at: app.submitted_at || app.created_at,
-        updated_at: app.updated_at,
-        user: {
-            full_name: app.user_name || null,
-            email: app.user_email || null,
-        },
-        prize: {
-            prize_name: app.prize_title || null,
-        },
-        common_field_values: commonByAppId.get(app.application_id) || [],
-        specific_field_values: specificByAppId.get(app.application_id) || [],
-    }));
+    const items = applications.map((app) => {
+        const specificFieldValues = specificByAppId.get(app.application_id) || [];
+        return withPrizeSpecificFieldAlias({
+            application_id: app.application_id,
+            user_id: app.user_id,
+            prize_id: app.prize_id,
+            status: app.status,
+            submitted_at: app.submitted_at || app.created_at,
+            created_at: app.submitted_at || app.created_at,
+            updated_at: app.updated_at,
+            user: {
+                full_name: app.user_name || null,
+                email: app.user_email || null,
+            },
+            prize: {
+                prize_name: app.prize_title || null,
+            },
+            common_field_values: commonByAppId.get(app.application_id) || [],
+            specific_field_values: specificFieldValues,
+        });
+    });
 
     return {
         items,
@@ -182,24 +191,27 @@ export const getEvaluatorApplicationsService = async ({ page = 1, limit = 50 } =
         specificByAppId.get(appId).push(row);
     }
 
-    const items = applications.map((app) => ({
-        application_id: app.application_id,
-        user_id: app.user_id,
-        prize_id: app.prize_id,
-        status: app.status,
-        submitted_at: app.submitted_at || app.created_at,
-        created_at: app.submitted_at || app.created_at,
-        updated_at: app.updated_at,
-        user: {
-            full_name: app.user_name || null,
-            email: app.user_email || null,
-        },
-        prize: {
-            prize_name: app.prize_title || null,
-        },
-        common_field_values: commonByAppId.get(app.application_id) || [],
-        specific_field_values: specificByAppId.get(app.application_id) || [],
-    }));
+    const items = applications.map((app) => {
+        const specificFieldValues = specificByAppId.get(app.application_id) || [];
+        return withPrizeSpecificFieldAlias({
+            application_id: app.application_id,
+            user_id: app.user_id,
+            prize_id: app.prize_id,
+            status: app.status,
+            submitted_at: app.submitted_at || app.created_at,
+            created_at: app.submitted_at || app.created_at,
+            updated_at: app.updated_at,
+            user: {
+                full_name: app.user_name || null,
+                email: app.user_email || null,
+            },
+            prize: {
+                prize_name: app.prize_title || null,
+            },
+            common_field_values: commonByAppId.get(app.application_id) || [],
+            specific_field_values: specificFieldValues,
+        });
+    });
 
     return {
         items,
@@ -217,7 +229,7 @@ export const getApplicationByIdService = async (application_id) => {
     if (!application) {
         throw new Error('Application not found');
     }
-    return application;
+    return withPrizeSpecificFieldAlias(application);
 };
 
 export const getApplicationsByUserIdService = async (user_id) => {
@@ -244,7 +256,10 @@ export const getUserProfileService = async (user_id) => {
     if (!userProfile) {
         throw new Error('User not found');
     }
-    return userProfile;
+    return {
+        ...userProfile,
+        applications: userProfile.applications.map(withPrizeSpecificFieldAlias),
+    };
 };
 
 export const getUserProfileForEvaluatorService = async (user_id) => {
@@ -261,14 +276,7 @@ export const getUserProfileForEvaluatorService = async (user_id) => {
     const markedIds = await getApplicationIdsHavingMarks(accepted.map((a) => a.application_id));
     const approvedApplications = accepted
         .filter((app) => !markedIds.has(app.application_id))
-        .map((app) => {
-            const { specific_field_values, ...appWithoutOldField } = app;
-            return {
-                ...appWithoutOldField,
-                // Transform specific_field_values to prize_specific_field_values for frontend compatibility
-                prize_specific_field_values: specific_field_values || [],
-            };
-        });
+        .map(withPrizeSpecificFieldAlias);
 
     return {
         user: userProfile.user,

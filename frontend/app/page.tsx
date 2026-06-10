@@ -499,7 +499,7 @@ export default function Home() {
           </div>
 
           <div className="text-center text-sm text-slate-500 mt-10">
-            © 2026 {t("footer.rights")}
+            © {new Date().getFullYear()} {t("footer.rights")}
           </div>
 
           {/* Toast Notification */}

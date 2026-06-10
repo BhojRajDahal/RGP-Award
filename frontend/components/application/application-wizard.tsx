@@ -17,10 +17,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
+type FieldType = 'text' | 'textarea' | 'number' | 'file' | 'date' | 'label'
+
 interface CommonField {
   common_field_id: number
   field_name: string
-  field_type: 'text' | 'textarea' | 'number' | 'file' | 'date'
+  field_type: FieldType
   is_required: boolean | number
 }
 
@@ -28,7 +30,7 @@ interface PrizeSpecificField {
   prize_specific_field_id: number
   prize_id: number
   field_name: string
-  field_type: 'text' | 'textarea' | 'number' | 'file' | 'date'
+  field_type: FieldType
   is_required: boolean | number
 }
 
@@ -38,6 +40,11 @@ interface FieldValue {
   value?: string
   file_path?: string
 }
+
+const MAX_FILE_SIZE_BYTES = 200 * 1024
+const MAX_FILE_SIZE_LABEL = "200KB"
+const formatFileSizeKB = (size: number) => `${(size / 1024).toFixed(1)}KB`
+const isInputField = (field: CommonField | PrizeSpecificField) => field.field_type !== 'label'
 
 export function ApplicationWizard({ prizeId }: { prizeId: string }) {
   const [step, setStep] = useState(1)
@@ -136,7 +143,7 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
   const handleNext = () => {
     // Validate current step before proceeding
     if (step === commonFieldsStep) {
-      const currentFields = commonFields.filter(f => f.is_required)
+      const currentFields = commonFields.filter(f => f.is_required && isInputField(f))
       const allFilled = currentFields.every(field => {
         const key = `common_${field.common_field_id}`
         const value = fieldValues[key]
@@ -151,7 +158,7 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
         return
       }
     } else if (step === prizeSpecificStep && prizeSpecificStep) {
-      const currentFields = prizeSpecificFields.filter(f => f.is_required)
+      const currentFields = prizeSpecificFields.filter(f => f.is_required && isInputField(f))
       const allFilled = currentFields.every(field => {
         const key = `specific_${field.prize_specific_field_id}`
         const value = fieldValues[key]
@@ -185,35 +192,36 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
     }))
   }
 
-  const handleFileChange = async (fieldId: string, file: File | null) => {
+  const clearFileUpload = (fieldId: string) => {
+    setFileUploads(prev => {
+      const nextFileUploads = { ...prev }
+      delete nextFileUploads[fieldId]
+      return nextFileUploads
+    })
+  }
+
+  const handleFileChange = async (fieldId: string, file: File | null, input?: HTMLInputElement) => {
     if (!file) {
-      const newFileUploads = { ...fileUploads }
-      delete newFileUploads[fieldId]
-      setFileUploads(newFileUploads)
+      clearFileUpload(fieldId)
       return
     }
 
-    // Check total file size (including the new file)
-    const MAX_TOTAL_SIZE = 10 * 1024 * 1024 // 10MB in bytes
-    const currentTotalSize = Object.values(fileUploads).reduce((sum, f) => sum + f.size, 0)
-    const newTotalSize = currentTotalSize + file.size
-
-    if (newTotalSize > MAX_TOTAL_SIZE) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      clearFileUpload(fieldId)
+      if (input) {
+        input.value = ""
+      }
       toast.error(
-        `Total file size exceeds 10MB limit. Current total: ${(currentTotalSize / (1024 * 1024)).toFixed(2)}MB, ` +
-        `new file: ${(file.size / (1024 * 1024)).toFixed(2)}MB. ` +
-        `The combined size of all files must not exceed 10MB.`
+        `File size exceeds ${MAX_FILE_SIZE_LABEL} limit. Selected file: ${formatFileSizeKB(file.size)}. ` +
+        `Please upload a file that is ${MAX_FILE_SIZE_LABEL} or less.`
       )
       return
     }
 
     setFileUploads(prev => ({ ...prev, [fieldId]: file }))
     
-    // Show info about remaining size
-    const remainingSize = MAX_TOTAL_SIZE - newTotalSize
     toast.info(
-      `File selected. Total size: ${(newTotalSize / (1024 * 1024)).toFixed(2)}MB / 10MB. ` +
-      `Remaining: ${(remainingSize / (1024 * 1024)).toFixed(2)}MB`
+      `File selected. ${file.name} is ${formatFileSizeKB(file.size)} / ${MAX_FILE_SIZE_LABEL}.`
     )
   }
 
@@ -230,14 +238,13 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
       return
     }
 
-    // Validate total file size before submission
-    const MAX_TOTAL_SIZE = 10 * 1024 * 1024 // 10MB in bytes
-    const totalFileSize = Object.values(fileUploads).reduce((sum, file) => sum + file.size, 0)
+    // Validate file size before submission
+    const oversizedFile = Object.values(fileUploads).find(file => file.size > MAX_FILE_SIZE_BYTES)
     
-    if (totalFileSize > MAX_TOTAL_SIZE) {
+    if (oversizedFile) {
       toast.error(
-        `Total file size exceeds 10MB limit. Current total: ${(totalFileSize / (1024 * 1024)).toFixed(2)}MB. ` +
-        `The combined size of all files must not exceed 10MB.`
+        `Each uploaded file must be ${MAX_FILE_SIZE_LABEL} or less. ` +
+        `${oversizedFile.name} is ${formatFileSizeKB(oversizedFile.size)}.`
       )
       setIsLoading(false)
       return
@@ -371,7 +378,7 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
       }
 
       // Prepare field values (without file_path - files will be sent separately)
-      const commonFieldValues = commonFields.map(field => {
+      const commonFieldValues = commonFields.filter(isInputField).map(field => {
         const key = `common_${field.common_field_id}`
         const value = fieldValues[key]
         
@@ -381,7 +388,7 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
         }
       })
 
-      const specificFieldValues = prizeSpecificFields.map(field => {
+      const specificFieldValues = prizeSpecificFields.filter(isInputField).map(field => {
         const key = `specific_${field.prize_specific_field_id}`
         const value = fieldValues[key]
         
@@ -406,6 +413,9 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
         const key = `common_${field.common_field_id}`
         const file = fileUploads[key]
         if (file && field.field_type === 'file') {
+          if (file.size > MAX_FILE_SIZE_BYTES) {
+            throw new Error(`Each uploaded file must be ${MAX_FILE_SIZE_LABEL} or less. ${file.name} is ${formatFileSizeKB(file.size)}.`)
+          }
           formData.append(key, file)
         }
       })
@@ -414,6 +424,9 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
         const key = `specific_${field.prize_specific_field_id}`
         const file = fileUploads[key]
         if (file && field.field_type === 'file') {
+          if (file.size > MAX_FILE_SIZE_BYTES) {
+            throw new Error(`Each uploaded file must be ${MAX_FILE_SIZE_LABEL} or less. ${file.name} is ${formatFileSizeKB(file.size)}.`)
+          }
           formData.append(key, file)
         }
       })
@@ -460,7 +473,7 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
         status: error.response?.status,
         config: error.config
       })
-      toast.error(error.response?.data?.msg || "Failed to submit application. Please try again.")
+      toast.error(error.response?.data?.msg || error.message || "Failed to submit application. Please try again.")
     } finally {
       setIsLoading(false)
       console.log('[handleSubmit] Loading state set to false')
@@ -477,6 +490,15 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
     const value = fieldValue?.value || ''
 
     switch (field.field_type) {
+      case 'label':
+        return (
+          <div key={fieldId} className="md:col-span-2 pt-4">
+            <h3 className="border-b pb-2 text-lg font-semibold text-foreground">
+              {field.field_name}
+            </h3>
+          </div>
+        )
+
       case 'text':
         return (
           <div key={fieldId} className="space-y-2">
@@ -548,7 +570,10 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
                 type="file"
                 id={fieldId}
                 className="hidden"
-                onChange={(e) => handleFileChange(fieldId, e.target.files?.[0] || null)}
+                onClick={(e) => {
+                  e.currentTarget.value = ""
+                }}
+                onChange={(e) => handleFileChange(fieldId, e.target.files?.[0] || null, e.currentTarget)}
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
               />
               <label htmlFor={fieldId} className="cursor-pointer">
@@ -558,7 +583,7 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
                 ) : (
                   <>
                     <p className="text-sm font-medium">Click to upload</p>
-                    <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, JPG, PNG (Total: max 10MB for all files)</p>
+                    <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, JPG, PNG (Max {MAX_FILE_SIZE_LABEL} per file)</p>
                   </>
                 )}
               </label>
@@ -613,49 +638,22 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
       </div>
 
       {/* File Size Limit Alert */}
-      {(() => {
-        const MAX_TOTAL_SIZE = 10 * 1024 * 1024 // 10MB in bytes
-        const totalFileSize = Object.values(fileUploads).reduce((sum, file) => sum + file.size, 0)
-        const totalSizeMB = (totalFileSize / (1024 * 1024)).toFixed(2)
-        const remainingSizeMB = ((MAX_TOTAL_SIZE - totalFileSize) / (1024 * 1024)).toFixed(2)
-        const usagePercent = (totalFileSize / MAX_TOTAL_SIZE) * 100
-        
-        return (
-          <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <AlertTitle className="text-blue-900 dark:text-blue-100 font-semibold">
-              File Upload Limit
-            </AlertTitle>
-            <AlertDescription className="text-blue-800 dark:text-blue-200">
-              <div className="mt-1 space-y-1">
-                <p>
-                  <strong>Total file size must not exceed 10MB for all files combined.</strong>
-                </p>
-                {Object.keys(fileUploads).length > 0 ? (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Current total: <strong>{totalSizeMB}MB</strong> / 10MB</span>
-                      <span className="text-xs">Remaining: {remainingSizeMB}MB</span>
-                    </div>
-                    <div className="w-full bg-blue-200 dark:bg-blue-900 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all ${
-                          usagePercent >= 90 ? 'bg-red-500' : 
-                          usagePercent >= 70 ? 'bg-yellow-500' : 
-                          'bg-blue-500'
-                        }`}
-                        style={{ width: `${Math.min(usagePercent, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm mt-1">No files uploaded yet. The combined size of all files you upload must be 10MB or less.</p>
-                )}
-              </div>
-            </AlertDescription>
-          </Alert>
-        )
-      })()}
+      <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <AlertTitle className="text-blue-900 dark:text-blue-100 font-semibold">
+          File Upload Limit
+        </AlertTitle>
+        <AlertDescription className="text-blue-800 dark:text-blue-200">
+          <div className="mt-1 space-y-1">
+            <p>
+              <strong>Each uploaded file must be {MAX_FILE_SIZE_LABEL} or less.</strong>
+            </p>
+            <p className="text-sm mt-1">
+              Files larger than {MAX_FILE_SIZE_LABEL} cannot be submitted.
+            </p>
+          </div>
+        </AlertDescription>
+      </Alert>
 
       <Card>
         <CardHeader>
@@ -709,16 +707,14 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
                   <h3 className="font-semibold">Application Summary</h3>
                   {Object.keys(fileUploads).length > 0 && (
                     <div className="text-sm text-muted-foreground">
-                      Total file size: {(
-                        Object.values(fileUploads).reduce((sum, file) => sum + file.size, 0) / (1024 * 1024)
-                      ).toFixed(2)}MB / 10MB
+                      File limit: {MAX_FILE_SIZE_LABEL} each
                     </div>
                   )}
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm">Common Information:</h4>
-                  {commonFields.map(field => {
+                  {commonFields.filter(isInputField).map(field => {
                     const key = `common_${field.common_field_id}`
                     const value = fieldValues[key]
                     return (
@@ -737,7 +733,7 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
                 {prizeSpecificFields.length > 0 && (
                   <div className="space-y-2 mt-4">
                     <h4 className="font-medium text-sm">Prize Specific Information:</h4>
-                    {prizeSpecificFields.map(field => {
+                    {prizeSpecificFields.filter(isInputField).map(field => {
                       const key = `specific_${field.prize_specific_field_id}`
                       const value = fieldValues[key]
                       return (

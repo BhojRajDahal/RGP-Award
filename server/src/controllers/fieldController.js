@@ -13,7 +13,10 @@ import {
     deletePrizeSpecificField,
 } from '../model/fieldModel.js';
 
-const VALID_FIELD_TYPES = new Set(['text', 'textarea', 'number', 'file', 'date']);
+const VALID_FIELD_TYPES = new Set(['text', 'textarea', 'number', 'file', 'date', 'label']);
+const VALID_FIELD_TYPE_MESSAGE = 'Invalid field type. Must be one of: text, textarea, number, file, date, label';
+const normalizedRequired = (fieldType, isRequired) =>
+    fieldType === 'label' ? false : isRequired !== undefined ? isRequired : true;
 const MAX_BULK_FIELDS = 200;
 
 // Common Field Controllers
@@ -25,12 +28,11 @@ export const createCommonFieldController = async (req, res) => {
             return res.status(400).json({ msg: 'Field name and field type are required' });
         }
 
-        const validFieldTypes = ['text', 'textarea', 'number', 'file', 'date'];
-        if (!validFieldTypes.includes(field_type)) {
-            return res.status(400).json({ msg: 'Invalid field type. Must be one of: text, textarea, number, file, date' });
+        if (!VALID_FIELD_TYPES.has(field_type)) {
+            return res.status(400).json({ msg: VALID_FIELD_TYPE_MESSAGE });
         }
 
-        const field = await createCommonField(field_name, field_type, is_required !== undefined ? is_required : true);
+        const field = await createCommonField(field_name, field_type, normalizedRequired(field_type, is_required));
         res.status(201).json({ msg: 'Common field created successfully', field });
     } catch (error) {
         res.status(400).json({ msg: error.message || 'Failed to create common field' });
@@ -76,12 +78,11 @@ export const updateCommonFieldController = async (req, res) => {
             return res.status(400).json({ msg: 'Field name and field type are required' });
         }
 
-        const validFieldTypes = ['text', 'textarea', 'number', 'file', 'date'];
-        if (!validFieldTypes.includes(field_type)) {
-            return res.status(400).json({ msg: 'Invalid field type. Must be one of: text, textarea, number, file, date' });
+        if (!VALID_FIELD_TYPES.has(field_type)) {
+            return res.status(400).json({ msg: VALID_FIELD_TYPE_MESSAGE });
         }
 
-        const field = await updateCommonField(common_field_id, field_name, field_type, is_required !== undefined ? is_required : true);
+        const field = await updateCommonField(common_field_id, field_name, field_type, normalizedRequired(field_type, is_required));
         res.status(200).json({ msg: 'Common field updated successfully', field });
     } catch (error) {
         res.status(400).json({ msg: error.message || 'Failed to update common field' });
@@ -115,12 +116,11 @@ export const createPrizeSpecificFieldController = async (req, res) => {
             return res.status(400).json({ msg: 'Prize ID, field name, and field type are required' });
         }
 
-        const validFieldTypes = ['text', 'textarea', 'number', 'file', 'date'];
-        if (!validFieldTypes.includes(field_type)) {
-            return res.status(400).json({ msg: 'Invalid field type. Must be one of: text, textarea, number, file, date' });
+        if (!VALID_FIELD_TYPES.has(field_type)) {
+            return res.status(400).json({ msg: VALID_FIELD_TYPE_MESSAGE });
         }
 
-        const field = await createPrizeSpecificField(prize_id, field_name, field_type, is_required !== undefined ? is_required : true);
+        const field = await createPrizeSpecificField(prize_id, field_name, field_type, normalizedRequired(field_type, is_required));
         res.status(201).json({ msg: 'Prize specific field created successfully', field });
     } catch (error) {
         res.status(400).json({ msg: error.message || 'Failed to create prize specific field' });
@@ -147,7 +147,7 @@ export const createPrizeSpecificFieldsBulkController = async (req, res) => {
             }
             if (!VALID_FIELD_TYPES.has(field.field_type)) {
                 return res.status(400).json({
-                    msg: 'Invalid field type. Must be one of: text, textarea, number, file, date',
+                    msg: VALID_FIELD_TYPE_MESSAGE,
                 });
             }
         }
@@ -155,7 +155,7 @@ export const createPrizeSpecificFieldsBulkController = async (req, res) => {
         const normalizedFields = fields.map((field) => ({
             field_name: String(field.field_name).trim(),
             field_type: field.field_type,
-            is_required: field.is_required !== undefined ? Boolean(field.is_required) : true,
+            is_required: normalizedRequired(field.field_type, field.is_required),
         }));
 
         const insertedFields = await createPrizeSpecificFieldsBulk(prize_id, normalizedFields);
@@ -221,12 +221,11 @@ export const updatePrizeSpecificFieldController = async (req, res) => {
             return res.status(400).json({ msg: 'Field name and field type are required' });
         }
 
-        const validFieldTypes = ['text', 'textarea', 'number', 'file', 'date'];
-        if (!validFieldTypes.includes(field_type)) {
-            return res.status(400).json({ msg: 'Invalid field type. Must be one of: text, textarea, number, file, date' });
+        if (!VALID_FIELD_TYPES.has(field_type)) {
+            return res.status(400).json({ msg: VALID_FIELD_TYPE_MESSAGE });
         }
 
-        const field = await updatePrizeSpecificField(prize_specific_field_id, field_name, field_type, is_required !== undefined ? is_required : true);
+        const field = await updatePrizeSpecificField(prize_specific_field_id, field_name, field_type, normalizedRequired(field_type, is_required));
         res.status(200).json({ msg: 'Prize specific field updated successfully', field });
     } catch (error) {
         res.status(400).json({ msg: error.message || 'Failed to update prize specific field' });

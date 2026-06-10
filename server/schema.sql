@@ -60,7 +60,7 @@ CREATE TABLE prize (
 CREATE TABLE common_fields (
     common_field_id INT(11) AUTO_INCREMENT PRIMARY KEY,
     field_name VARCHAR(255) NOT NULL,
-    field_type ENUM('text', 'textarea', 'number', 'file', 'date') NOT NULL,
+    field_type ENUM('text', 'textarea', 'number', 'file', 'date', 'label') NOT NULL,
     is_required TINYINT(1) DEFAULT 1
 );
 
@@ -68,7 +68,7 @@ CREATE TABLE prize_specific_fields (
     prize_specific_field_id INT(11) AUTO_INCREMENT PRIMARY KEY,
     prize_id INT(11) NOT NULL,
     field_name VARCHAR(255) NOT NULL,
-    field_type ENUM('text', 'textarea', 'number', 'file', 'date') NOT NULL,
+    field_type ENUM('text', 'textarea', 'number', 'file', 'date', 'label') NOT NULL,
     is_required TINYINT(1) DEFAULT 1,
     INDEX (prize_id),
     CONSTRAINT fk_psf_prize

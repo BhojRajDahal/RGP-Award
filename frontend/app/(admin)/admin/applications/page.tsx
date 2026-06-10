@@ -61,6 +61,7 @@ interface Application {
   prize_title?: string // Keep for backward compatibility
   common_field_values?: any[]
   prize_specific_field_values?: any[]
+  specific_field_values?: any[]
 }
 
 interface ApplicationDisplay {
@@ -82,6 +83,8 @@ interface ApplicationDisplay {
   applicationCount?: number
 }
 
+const APPLICATIONS_PER_PAGE = 10
+
 export default function AdminApplicationsPage() {
   const { t } = useTranslation()
   const [applications, setApplications] = useState<ApplicationDisplay[]>([])
@@ -89,6 +92,7 @@ export default function AdminApplicationsPage() {
   const [filter, setFilter] = useState("All")
   const [awardFilter, setAwardFilter] = useState("all")
   const [yearFilter, setYearFilter] = useState("all")
+  const [currentPage, setCurrentPage] = useState(1)
   const [applicantProfile, setApplicantProfile] = useState<ApplicationDisplay | null>(null)
   const [userProfileData, setUserProfileData] = useState<any>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -198,6 +202,9 @@ export default function AdminApplicationsPage() {
     return fullUrl
   }
 
+  const getAwardSpecificFieldValues = (app: any) =>
+    app?.prize_specific_field_values || app?.specific_field_values || []
+
   // Fetch applications
   useEffect(() => {
     const fetchApplications = async () => {
@@ -276,6 +283,28 @@ export default function AdminApplicationsPage() {
       return true
     })
   }, [applications, filter, awardFilter, yearFilter])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filter, awardFilter, yearFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredApps.length / APPLICATIONS_PER_PAGE))
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  const paginatedApps = useMemo(() => {
+    const startIndex = (currentPage - 1) * APPLICATIONS_PER_PAGE
+    return filteredApps.slice(startIndex, startIndex + APPLICATIONS_PER_PAGE)
+  }, [filteredApps, currentPage])
+
+  const pageNumbers = useMemo(
+    () => Array.from({ length: totalPages }, (_, index) => index + 1),
+    [totalPages]
+  )
 
   const handleStatusUpdate = async (applicationId: number, newUIStatus: string) => {
     const dbStatus = mapUIToStatus(newUIStatus)
@@ -627,104 +656,137 @@ export default function AdminApplicationsPage() {
               <p className="text-muted-foreground">No applications found.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Applicant</TableHead>
-                  <TableHead>Award</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>{t("admin.applications.marks")}</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredApps.map((app) => (
-                <TableRow key={app.id}>
-                  <TableCell className="font-medium">{app.id}</TableCell>
-                  <TableCell>
-                    <div 
-                      className="font-medium cursor-pointer hover:text-primary hover:underline"
-                      onClick={() => handleViewApplicant(app)}
-                    >
-                      {app.applicant}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{app.email}</div>
-                  </TableCell>
-                  <TableCell>{app.prize}</TableCell>
-                  <TableCell>{app.date}</TableCell>
-                  <TableCell>
-                    <Badge
-                      className={
-                        app.status === "Approved"
-                          ? "bg-green-500 text-white hover:bg-green-600"
-                          : app.status === "Rejected"
-                            ? "bg-red-500 text-white hover:bg-red-600"
-                            : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
-                      }
-                    >
-                      {app.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {applicationsWithMarks.has(app.application_id) ? (
-                      <Badge className="bg-rose-400 text-white hover:bg-rose-500 border-0">
-                        {t("admin.applications.marks_assigned")}
-                      </Badge>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {app.status !== "Approved" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleActionClick(app.application_id, "Approved")}
+            <div className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Applicant</TableHead>
+                    <TableHead>Award</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>{t("admin.applications.marks")}</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedApps.map((app) => (
+                    <TableRow key={app.id}>
+                      <TableCell className="font-medium">{app.id}</TableCell>
+                      <TableCell>
+                        <div 
+                          className="font-medium cursor-pointer hover:text-primary hover:underline"
+                          onClick={() => handleViewApplicant(app)}
                         >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {app.status !== "Rejected" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleActionClick(app.application_id, "Rejected")}
+                          {app.applicant}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{app.email}</div>
+                      </TableCell>
+                      <TableCell>{app.prize}</TableCell>
+                      <TableCell>{app.date}</TableCell>
+                      <TableCell>
+                        <Badge
+                          className={
+                            app.status === "Approved"
+                              ? "bg-green-500 text-white hover:bg-green-600"
+                              : app.status === "Rejected"
+                                ? "bg-red-500 text-white hover:bg-red-600"
+                                : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
+                          }
                         >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleAssignMarks(app.application_id)}
-                            disabled={applicationsWithMarks.has(app.application_id)}
-                            className={applicationsWithMarks.has(app.application_id) ? "opacity-50 cursor-not-allowed" : ""}
-                          >
-                            Assign Marks
-                            {applicationsWithMarks.has(app.application_id) && " (Already Assigned)"}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              </TableBody>
-            </Table>
+                          {app.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {applicationsWithMarks.has(app.application_id) ? (
+                          <Badge className="bg-rose-400 text-white hover:bg-rose-500 border-0">
+                            {t("admin.applications.marks_assigned")}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {app.status !== "Approved" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleActionClick(app.application_id, "Approved")}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {app.status !== "Rejected" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleActionClick(app.application_id, "Rejected")}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleAssignMarks(app.application_id)}
+                                disabled={applicationsWithMarks.has(app.application_id)}
+                                className={applicationsWithMarks.has(app.application_id) ? "opacity-50 cursor-not-allowed" : ""}
+                              >
+                                Assign Marks
+                                {applicationsWithMarks.has(app.application_id) && " (Already Assigned)"}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-4">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="text-base"
+                  >
+                    Previous
+                  </Button>
+                  {pageNumbers.map((page) => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "outline" : "ghost"}
+                      onClick={() => setCurrentPage(page)}
+                      className="h-11 min-w-11 text-base"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="text-base"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -771,8 +833,9 @@ export default function AdminApplicationsPage() {
                       }
                     }
                     // Check prize-specific fields
-                    if (!profilePicture && app.prize_specific_field_values) {
-                      for (const field of app.prize_specific_field_values) {
+                    const awardSpecificFields = getAwardSpecificFieldValues(app)
+                    if (!profilePicture && awardSpecificFields.length > 0) {
+                      for (const field of awardSpecificFields) {
                         if (field.file_path) {
                           const fieldName = (field.field_name || '').toLowerCase()
                           const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
@@ -939,8 +1002,9 @@ export default function AdminApplicationsPage() {
                                         }
                                       }
                                     }
-                                    if (!profilePicturePath && app.prize_specific_field_values) {
-                                      for (const field of app.prize_specific_field_values) {
+                                    const awardSpecificFields = getAwardSpecificFieldValues(app)
+                                    if (!profilePicturePath && awardSpecificFields.length > 0) {
+                                      for (const field of awardSpecificFields) {
                                         if (field.file_path) {
                                           const fieldName = (field.field_name || '').toLowerCase()
                                           const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
@@ -961,8 +1025,8 @@ export default function AdminApplicationsPage() {
                                         }
                                       })
                                     }
-                                    if (app.prize_specific_field_values) {
-                                      app.prize_specific_field_values.forEach((field: any) => {
+                                    if (awardSpecificFields.length > 0) {
+                                      awardSpecificFields.forEach((field: any) => {
                                         if (field.file_path && field.file_path !== profilePicturePath) {
                                           documents.push(field.file_path)
                                         }
@@ -1023,14 +1087,14 @@ export default function AdminApplicationsPage() {
                                         )}
 
                                         {/* Prize-Specific Fields */}
-                                        {app.prize_specific_field_values && app.prize_specific_field_values.length > 0 && (
+                                        {awardSpecificFields.length > 0 && (
                                           <div className="space-y-2 sm:space-y-3">
                                             <h4 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2">
                                               <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
                                               Award-Specific Information
                                             </h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                              {app.prize_specific_field_values.map((field: any, idx: number) => (
+                                              {awardSpecificFields.map((field: any, idx: number) => (
                                                 <div key={idx} className="bg-background p-3 sm:p-4 rounded-lg border space-y-1.5">
                                                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{field.field_name}</span>
                                                   <div className="mt-1">

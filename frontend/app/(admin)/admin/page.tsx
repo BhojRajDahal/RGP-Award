@@ -472,6 +472,7 @@ export default function AdminDashboard() {
           totalApplications: totalApplications,
           totalPrizes: Array.isArray(prizes) ? prizes.length : 0,
         }}
+        awards={prizes}
         onDistrictSelect={(district) => {
           console.log("Selected district:", district)
           // You can add navigation or filtering logic here

@@ -33,7 +33,7 @@ import { useTranslation } from "@/lib/i18n-context"
 interface CommonField {
   common_field_id: number
   field_name: string
-  field_type: 'text' | 'textarea' | 'number' | 'file' | 'date'
+  field_type: 'text' | 'textarea' | 'number' | 'file' | 'date' | 'label'
   is_required: boolean | number
 }
 
@@ -43,7 +43,10 @@ const FIELD_TYPES = [
   { value: 'number', label: 'Number' },
   { value: 'file', label: 'File' },
   { value: 'date', label: 'Date' },
+  { value: 'label', label: 'Label' },
 ] as const
+
+type FieldType = (typeof FIELD_TYPES)[number]['value']
 
 export default function CommonFieldsPage() {
   const { token } = useAuth({ requireAuth: true, requireAdmin: true })
@@ -59,7 +62,7 @@ export default function CommonFieldsPage() {
 
   const [newField, setNewField] = useState({
     field_name: "",
-    field_type: "text" as const,
+    field_type: "text" as FieldType,
     is_required: true,
   })
 
@@ -128,7 +131,7 @@ export default function CommonFieldsPage() {
         {
           field_name: newField.field_name,
           field_type: newField.field_type,
-          is_required: newField.is_required,
+          is_required: newField.field_type === 'label' ? false : newField.is_required,
         },
         { headers: { Authorization: `Bearer ${adminToken}` } }
       )
@@ -182,7 +185,7 @@ export default function CommonFieldsPage() {
         {
           field_name: editField.field_name,
           field_type: editField.field_type,
-          is_required: editField.is_required === false ? false : Boolean(editField.is_required),
+          is_required: editField.field_type === 'label' ? false : editField.is_required === false ? false : Boolean(editField.is_required),
         },
         { headers: { Authorization: `Bearer ${adminToken}` } }
       )
@@ -252,7 +255,7 @@ export default function CommonFieldsPage() {
                 <Select
                   value={editField.field_type}
                   onValueChange={(value: any) =>
-                    setEditField({ ...editField, field_type: value })
+                    setEditField({ ...editField, field_type: value, is_required: value === 'label' ? false : editField.is_required })
                   }
                 >
                   <SelectTrigger>
@@ -270,6 +273,7 @@ export default function CommonFieldsPage() {
 
               <div className="flex items-center gap-2">
                 <Checkbox
+                  disabled={editField.field_type === 'label'}
                   checked={editField.is_required === false ? false : Boolean(editField.is_required)}
                   onCheckedChange={(checked) =>
                     setEditField({ ...editField, is_required: checked as boolean })
@@ -329,7 +333,7 @@ export default function CommonFieldsPage() {
                 <Select
                   value={newField.field_type}
                   onValueChange={(value: any) =>
-                    setNewField({ ...newField, field_type: value })
+                    setNewField({ ...newField, field_type: value, is_required: value === 'label' ? false : newField.is_required })
                   }
                 >
                   <SelectTrigger>
@@ -347,6 +351,7 @@ export default function CommonFieldsPage() {
 
               <div className="flex items-center gap-2">
                 <Checkbox
+                  disabled={newField.field_type === 'label'}
                   checked={newField.is_required}
                   onCheckedChange={(checked) =>
                     setNewField({ ...newField, is_required: checked as boolean })

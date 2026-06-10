@@ -52,7 +52,7 @@ interface PrizeSpecificField {
   prize_specific_field_id: number
   prize_id: number
   field_name: string
-  field_type: 'text' | 'textarea' | 'number' | 'file' | 'date'
+  field_type: 'text' | 'textarea' | 'number' | 'file' | 'date' | 'label'
   is_required: boolean | number
 }
 
@@ -62,7 +62,10 @@ const FIELD_TYPES = [
   { value: 'number', label: 'Number' },
   { value: 'file', label: 'File' },
   { value: 'date', label: 'Date' },
+  { value: 'label', label: 'Label' },
 ] as const
+
+type FieldType = (typeof FIELD_TYPES)[number]['value']
 
 export default function AdminPrizesPage() {
   const { token } = useAuth({ requireAuth: true, requireAdmin: true })
@@ -95,7 +98,7 @@ export default function AdminPrizesPage() {
   const [submittingField, setSubmittingField] = useState(false)
   const [newField, setNewField] = useState({
     field_name: "",
-    field_type: "text" as const,
+    field_type: "text" as FieldType,
     is_required: true,
   })
   const [editingField, setEditingField] = useState<PrizeSpecificField | null>(null)
@@ -428,7 +431,7 @@ export default function AdminPrizesPage() {
           prize_id: selectedPrize.prize_id,
           field_name: newField.field_name,
           field_type: newField.field_type,
-          is_required: newField.is_required,
+          is_required: newField.field_type === 'label' ? false : newField.is_required,
         },
         { headers: { Authorization: `Bearer ${adminToken}` } }
       )
@@ -484,7 +487,7 @@ export default function AdminPrizesPage() {
         {
           field_name: editingField.field_name,
           field_type: editingField.field_type,
-          is_required: editingField.is_required === false ? false : Boolean(editingField.is_required),
+          is_required: editingField.field_type === 'label' ? false : editingField.is_required === false ? false : Boolean(editingField.is_required),
         },
         { headers: { Authorization: `Bearer ${adminToken}` } }
       )
@@ -787,7 +790,7 @@ export default function AdminPrizesPage() {
                       <Select
                         value={newField.field_type}
                         onValueChange={(value: any) =>
-                          setNewField({ ...newField, field_type: value })
+                          setNewField({ ...newField, field_type: value, is_required: value === 'label' ? false : newField.is_required })
                         }
                       >
                         <SelectTrigger>
@@ -805,6 +808,7 @@ export default function AdminPrizesPage() {
 
                     <div className="flex items-center gap-2">
                       <Checkbox
+                        disabled={newField.field_type === 'label'}
                         checked={newField.is_required}
                         onCheckedChange={(checked) =>
                           setNewField({ ...newField, is_required: checked as boolean })
@@ -922,7 +926,7 @@ export default function AdminPrizesPage() {
                 <Select
                   value={editingField.field_type}
                   onValueChange={(value: any) =>
-                    setEditingField({ ...editingField, field_type: value })
+                    setEditingField({ ...editingField, field_type: value, is_required: value === 'label' ? false : editingField.is_required })
                   }
                 >
                   <SelectTrigger>
@@ -940,6 +944,7 @@ export default function AdminPrizesPage() {
 
               <div className="flex items-center gap-2">
                 <Checkbox
+                  disabled={editingField.field_type === 'label'}
                   checked={
                     editingField.is_required === false
                       ? false

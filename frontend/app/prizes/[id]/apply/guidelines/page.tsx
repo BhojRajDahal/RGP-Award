@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/ui/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, FileText, Link, Upload, CheckCircle2, AlertCircle, Info } from "lucide-react"
+import { ArrowLeft, FileText, Link, Upload, CheckCircle2, AlertCircle, Info, Download, ExternalLink } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+
+const awardGuidelinesPdfUrl = "/Award%20guidelines.pdf"
 
 export default function GuidelinesPage({ params }: { params: Promise<{ id: string }> }) {
   const { isAuthenticated, isAdmin, isChecking } = useAuth()
@@ -56,6 +58,43 @@ export default function GuidelinesPage({ params }: { params: Promise<{ id: strin
 
           {/* Guidelines Content */}
           <div className="space-y-6">
+            {/* Official Award Guidelines PDF */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Official Award Guidelines
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Review the official award guideline document before filling out the application form.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      File: Award guidelines.pdf
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button asChild variant="outline">
+                      <a href={awardGuidelinesPdfUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open PDF
+                      </a>
+                    </Button>
+                    <Button asChild>
+                      <a href={awardGuidelinesPdfUrl} download="Award guidelines.pdf">
+                        <Download className="mr-2 h-4 w-4" />
+                        Download PDF
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+
+              </CardContent>
+            </Card>
+
             {/* General Requirements */}
             <Card>
               <CardHeader>
@@ -75,20 +114,20 @@ export default function GuidelinesPage({ params }: { params: Promise<{ id: strin
               </CardContent>
             </Card>
 
-            {/* Journal Link Submission Guidelines */}
+            {/* Publication Link Submission Guidelines */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Link className="h-5 w-5" />
-                  Journal Link Submission Guidelines
+                  Publication Link Submission Guidelines
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <ul className="space-y-3 list-disc list-inside text-sm">
-                  <li>Add all journal links in one document.</li>
+                  <li>Add all publication links in one document.</li>
                   <li>Convert the document into a single PDF file.</li>
-                  <li>Ensure all journal links are correct and accessible.</li>
-                  <li>Submit only one PDF containing all journal links.</li>
+                  <li>Ensure all publication links are correct and accessible.</li>
+                  <li>Submit only one PDF containing all publication links.</li>
                   <li>Review the PDF carefully before final submission.</li>
                 </ul>
               </CardContent>
@@ -108,10 +147,10 @@ export default function GuidelinesPage({ params }: { params: Promise<{ id: strin
                     <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                     <div className="space-y-2">
                       <h4 className="font-semibold text-blue-900 dark:text-blue-100">
-                        Total File Size Limit: 10MB
+                        File Size Limit: 200KB per file
                       </h4>
                       <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <strong>The combined size of all files you upload must not exceed 10MB.</strong> This is a total limit for all files together, not per file.
+                        <strong>Each file you upload must be 200KB or less.</strong> This limit applies to every uploaded file individually.
                       </p>
                     </div>
                   </div>
@@ -122,19 +161,19 @@ export default function GuidelinesPage({ params }: { params: Promise<{ id: strin
                   <div className="space-y-2 text-sm">
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span><strong>Allowed:</strong> 5 files of 2MB each = 10MB total</span>
+                      <span><strong>Allowed:</strong> 1 file of 180KB</span>
                     </div>
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span><strong>Allowed:</strong> 1 file of 9MB + 1 file of 1MB = 10MB total</span>
+                      <span><strong>Allowed:</strong> Multiple files where every file is 200KB or less</span>
                     </div>
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                      <span><strong>Not Allowed:</strong> 2 files of 6MB each = 12MB total (exceeds limit)</span>
+                      <span><strong>Not Allowed:</strong> 1 file of 250KB</span>
                     </div>
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                      <span><strong>Not Allowed:</strong> 1 file of 12MB (exceeds total limit)</span>
+                      <span><strong>Not Allowed:</strong> Any single file larger than 200KB, even if other files are smaller</span>
                     </div>
                   </div>
                 </div>
@@ -150,11 +189,11 @@ export default function GuidelinesPage({ params }: { params: Promise<{ id: strin
                 <div className="space-y-3 mt-4">
                   <h4 className="font-semibold text-sm">File Upload Tips:</h4>
                   <ul className="space-y-2 list-disc list-inside text-sm">
-                    <li>Compress large images before uploading to reduce file size</li>
+                    <li>Compress images before uploading to keep each file under 200KB</li>
                     <li>Use PDF format for documents when possible</li>
-                    <li>Check the total file size indicator on the application form</li>
-                    <li>Remove unnecessary files if you exceed the 10MB limit</li>
-                    <li>Each individual file can be up to 10MB, but the total of all files must not exceed 10MB</li>
+                    <li>Check each file size before uploading</li>
+                    <li>Reduce image resolution or PDF size if a file exceeds 200KB</li>
+                    <li>Each individual file must be 200KB or less</li>
                   </ul>
                 </div>
               </CardContent>
@@ -199,8 +238,8 @@ export default function GuidelinesPage({ params }: { params: Promise<{ id: strin
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-amber-800 dark:text-amber-200">
                 <p>
-                  <strong>⚠️ File Size Validation:</strong> The system will automatically validate the total file size. 
-                  If your files exceed 10MB, you will not be able to submit the application.
+                  <strong>⚠️ File Size Validation:</strong> The system will automatically validate each uploaded file. 
+                  If any file exceeds 200KB, you will not be able to submit the application.
                 </p>
                 <p>
                   <strong>⚠️ No Edits After Submission:</strong> Once you submit your application, you cannot make changes. 

@@ -67,7 +67,7 @@ app.use(cors({
 
 // JSON body parser with size limit
 // Note: File uploads are handled by multer middleware with separate limits
-// Total file size limit: 10MB for all files combined (configured in upload.js)
+// Application file uploads are limited to 200KB per file in upload.js
 app.use(express.json({ limit: '10mb' }));
 
 // Add logging middleware to see all incoming requests (before routes)

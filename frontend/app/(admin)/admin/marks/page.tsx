@@ -28,6 +28,7 @@ import { toast } from "sonner"
 import { downloadMarkCertificatePdf } from "@/lib/mark-certificate-pdf"
 
 const NAST_LOGO = "/Nepal_Academy_of_Science_and_Technology_Logo.svg.png"
+const MARKS_PER_PAGE = 10
 
 /** `application_marks.created_at` from API (ISO string or serialized Date). */
 function formatMarksAssignedAt(value: string | null | undefined): string {
@@ -75,6 +76,7 @@ export default function MarksDetailsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedYear, setSelectedYear] = useState<string>("all")
   const [selectedPrize, setSelectedPrize] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
   const [years, setYears] = useState<number[]>([])
   const [prizes, setPrizes] = useState<{ prize_id: number; award: string }[]>([])
   const [sortConfig, setSortConfig] = useState<{ key: keyof MarkDetail | null; direction: 'asc' | 'desc' }>({
@@ -168,10 +170,12 @@ export default function MarksDetailsPage() {
 
   const handlePrizeChange = (value: string) => {
     setSelectedPrize(value)
+    setCurrentPage(1)
   }
 
   const handleYearChange = (value: string) => {
     setSelectedYear(value)
+    setCurrentPage(1)
   }
 
   const handleSort = (key: keyof MarkDetail) => {
@@ -237,6 +241,23 @@ export default function MarksDetailsPage() {
   useEffect(() => {
     applySorting()
   }, [applySorting])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const totalPages = Math.max(1, Math.ceil(displayedMarks.length / MARKS_PER_PAGE))
+  const paginatedMarks = displayedMarks.slice(
+    (currentPage - 1) * MARKS_PER_PAGE,
+    currentPage * MARKS_PER_PAGE
+  )
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const openViewRemarks = async (mark: MarkDetail) => {
     setViewRow(mark)
@@ -404,7 +425,7 @@ export default function MarksDetailsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayedMarks.map((mark) => (
+                  {paginatedMarks.map((mark) => (
                     <TableRow key={mark.mark_id}>
                       <TableCell className="font-medium">{mark.name}</TableCell>
                       <TableCell>{mark.phone || "N/A"}</TableCell>
@@ -431,6 +452,36 @@ export default function MarksDetailsPage() {
                   ))}
                 </TableBody>
               </Table>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 border-t px-4 py-4">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="text-base"
+                  >
+                    Previous
+                  </Button>
+                  {pageNumbers.map((page) => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "outline" : "ghost"}
+                      onClick={() => setCurrentPage(page)}
+                      className="h-11 min-w-11 text-base"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="text-base"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

@@ -34,6 +34,7 @@ interface Application {
   prize?: {
     prize_name?: string
   }
+  prize_title?: string
   common_field_values?: Array<{
     field_name?: string
     value?: string
@@ -44,6 +45,18 @@ interface Application {
     value?: string
     field_type?: string
   }>
+  prize_specific_field_values?: Array<{
+    field_name?: string
+    value?: string
+    field_type?: string
+  }>
+}
+
+interface AwardOptionSource {
+  prize_id?: number
+  id?: string
+  title?: string
+  prize_name?: string
 }
 
 interface ProvinceData {
@@ -110,11 +123,13 @@ const SEX_OPTIONS = [
 
 interface InteractiveNepalMapProps {
   stats?: MapStats
+  awards?: AwardOptionSource[]
   onDistrictSelect?: (district: string) => void
 }
 
 export default function InteractiveNepalMap({ 
   stats,
+  awards = [],
   onDistrictSelect 
 }: InteractiveNepalMapProps) {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null)
@@ -123,6 +138,7 @@ export default function InteractiveNepalMap({
   const [loading, setLoading] = useState(true)
   const [sexFilter, setSexFilter] = useState<string>("all")
   const [provinceFilter, setProvinceFilter] = useState<string>("all")
+  const [awardFilter, setAwardFilter] = useState<string>("all")
 
   // Helper function to extract field value by field name
   const getFieldValue = (app: Application, fieldName: string): string | null => {
@@ -138,8 +154,9 @@ export default function InteractiveNepalMap({
     }
     
     // Check specific fields
-    if (app.specific_field_values) {
-      for (const field of app.specific_field_values) {
+    const specificFields = app.specific_field_values || app.prize_specific_field_values || []
+    if (specificFields.length > 0) {
+      for (const field of specificFields) {
         if (field.field_name && field.field_name.toLowerCase() === fieldNameLower) {
           return field.value || null
         }
@@ -147,6 +164,14 @@ export default function InteractiveNepalMap({
     }
     
     return null
+  }
+
+  const getAwardName = (app: Application): string => {
+    return app.prize?.prize_name || app.prize_title || `Award ${app.prize_id}`
+  }
+
+  const getAwardFilterValue = (app: Application): string => {
+    return app.prize_id ? String(app.prize_id) : getAwardName(app)
   }
 
   // Helper function to extract sex from application
@@ -327,10 +352,36 @@ export default function InteractiveNepalMap({
     fetchApplications()
   }, [])
 
-  // Filter applications based on sex and province
+  const awardOptions = useMemo(() => {
+    const options = new Map<string, string>()
+    for (const award of awards) {
+      const value = award.prize_id ? String(award.prize_id) : award.id || award.title || award.prize_name
+      const label = award.title || award.prize_name || (value ? `Award ${value}` : "")
+      if (value && label && !options.has(value)) {
+        options.set(value, label)
+      }
+    }
+    for (const app of applications) {
+      const value = getAwardFilterValue(app)
+      const label = getAwardName(app)
+      if (value && label && !options.has(value)) {
+        options.set(value, label)
+      }
+    }
+    return Array.from(options.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }))
+  }, [applications, awards])
+
+  // Filter applications based on sex, province, and award
   const filteredApplications = useMemo(() => {
     const list = Array.isArray(applications) ? applications : []
     return list.filter((app) => {
+      // Filter by award
+      if (awardFilter !== "all" && getAwardFilterValue(app) !== awardFilter) {
+        return false
+      }
+
       // Filter by sex
       if (sexFilter !== "all") {
         const appSex = getSex(app)
@@ -352,7 +403,7 @@ export default function InteractiveNepalMap({
 
       return true
     })
-  }, [applications, sexFilter, provinceFilter])
+  }, [applications, sexFilter, provinceFilter, awardFilter])
 
   // Calculate province statistics from filtered applications
   const provincesInfo = useMemo(() => {
@@ -420,8 +471,9 @@ export default function InteractiveNepalMap({
 
   // Calculate total stats from provinces
   const mapStats = useMemo(() => {
-    if (stats) return stats
-    
+    const hasActiveFilters = sexFilter !== "all" || provinceFilter !== "all" || awardFilter !== "all"
+    if (stats && !hasActiveFilters) return stats
+
     const totals = Object.values(provincesInfo).reduce(
       (acc, province) => ({
         totalUsers: acc.totalUsers + province.users,
@@ -431,7 +483,7 @@ export default function InteractiveNepalMap({
       { totalUsers: 0, totalApplications: 0, totalPrizes: 0 }
     )
     return totals
-  }, [stats, provincesInfo])
+  }, [stats, provincesInfo, sexFilter, provinceFilter, awardFilter])
 
   const handleProvinceClick = (provinceKey: string) => {
     setSelectedProvince(provinceKey === selectedProvince ? null : provinceKey)
@@ -486,7 +538,7 @@ export default function InteractiveNepalMap({
         </CardHeader>
         <CardContent className="w-full overflow-x-hidden">
           {/* Filter Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="space-y-2">
               <label className="text-sm font-medium">Filter by Sex</label>
               <Select value={sexFilter} onValueChange={setSexFilter}>
@@ -497,6 +549,22 @@ export default function InteractiveNepalMap({
                   {SEX_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Filter by Award</label>
+              <Select value={awardFilter} onValueChange={setAwardFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select award" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Awards</SelectItem>
+                  {awardOptions.map((award) => (
+                    <SelectItem key={award.value} value={award.value}>
+                      {award.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
