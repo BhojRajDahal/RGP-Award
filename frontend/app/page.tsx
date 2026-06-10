@@ -118,21 +118,6 @@ export default function Home() {
     return Award // default icon
   }
 
-  // Helper function to get category from title
-  const getCategory = (title: string) => {
-    const lowerTitle = title.toLowerCase()
-    if (lowerTitle.includes("scientist") || lowerTitle.includes("research")) {
-      return "Research"
-    }
-    if (lowerTitle.includes("technology") || lowerTitle.includes("innovation")) {
-      return "Technology"
-    }
-    if (lowerTitle.includes("literature") || lowerTitle.includes("multimedia")) {
-      return "Multimedia"
-    }
-    return "Award"
-  }
-
   // Format date for display (full format like prizes page)
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A"
@@ -270,7 +255,6 @@ export default function Home() {
                 <div ref={cardsRef} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {prizes.map((prize, index) => {
                     const Icon = getIcon(prize.title)
-                    const category = getCategory(prize.title)
                     
                     return (
                       <Card
@@ -285,7 +269,6 @@ export default function Home() {
                             <div className="p-2 bg-primary/10 rounded-lg text-primary">
                               <Icon className="h-6 w-6" />
                             </div>
-                            <Badge variant="secondary">{category}</Badge>
                           </div>
                           <CardTitle className="text-xl mb-3 line-clamp-2">{prize.title}</CardTitle>
                           <CardDescription className="text-sm line-clamp-3">
@@ -293,7 +276,7 @@ export default function Home() {
                               prize.description.length > 150 
                                 ? `${prize.description.substring(0, 150)}...` 
                                 : prize.description
-                            ) : `Recognizing excellence in ${category.toLowerCase()}.`}
+                            ) : "Recognizing excellence and achievement."}
                           </CardDescription>
                         </CardHeader>
 

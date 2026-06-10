@@ -106,21 +106,6 @@ export default function PrizesPage() {
     return Award
   }
 
-  // Helper function to get category from title
-  const getCategory = (title: string) => {
-    const lowerTitle = title.toLowerCase()
-    if (lowerTitle.includes("scientist") || lowerTitle.includes("research")) {
-      return "Research"
-    }
-    if (lowerTitle.includes("technology") || lowerTitle.includes("innovation")) {
-      return "Technology"
-    }
-    if (lowerTitle.includes("literature") || lowerTitle.includes("multimedia")) {
-      return "Multimedia"
-    }
-    return "Award"
-  }
-
   // Check if prize is closing soon (within 7 days)
   const isClosingSoon = (closeDate: string) => {
     const today = new Date()
@@ -503,7 +488,6 @@ export default function PrizesPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredAndSortedPrizes.map((prize, index) => {
               const Icon = getIcon(prize.title)
-              const category = getCategory(prize.title)
               const daysUntilDeadline = getDaysUntilDeadline(prize.close_date)
               const isClosingSoon = daysUntilDeadline > 0 && daysUntilDeadline <= 7
               const isUpcomingPrize = isUpcoming(prize.open_date)
@@ -550,11 +534,6 @@ export default function PrizesPage() {
                     <CardTitle className="text-xl mb-2 line-clamp-2 group-hover:text-primary transition-colors">
                       {prize.title}
                     </CardTitle>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {category}
-                      </Badge>
-                    </div>
                     <CardDescription className="text-sm line-clamp-2">
                       {prize.description ? (
                         prize.description.length > 120
@@ -663,7 +642,6 @@ export default function PrizesPage() {
                           Upcoming
                         </Badge>
                       )}
-                      <Badge variant="secondary">{getCategory(selectedPrize.title)}</Badge>
                     </div>
                     <span className="text-sm text-muted-foreground font-mono">
                       ID: PRZ-{selectedPrize.prize_id}
