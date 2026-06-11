@@ -31,7 +31,7 @@ interface PasswordRules {
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { isAuthenticated, isAdmin } = useAuth()
+  const { isAuthenticated, isAdmin } = useAuth({ checkSession: false })
 
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)

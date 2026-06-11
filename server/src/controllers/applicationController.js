@@ -356,7 +356,7 @@ export const getMarksByApplicationIdController = async (req, res) => {
 
 export const getAllMarksDetailsController = async (req, res) => {
     try {
-        const { search = '', year = null, prize_id = null, page = '1', limit = '50' } = req.query;
+        const { search = '', year = null, year_from = null, year_to = null, prize_id = null, page = '1', limit = '50' } = req.query;
         // Validate and parse prize_id safely
         let prizeIdParam = null;
         if (prize_id && prize_id !== 'all') {
@@ -365,7 +365,19 @@ export const getAllMarksDetailsController = async (req, res) => {
                 prizeIdParam = parsed;
             }
         }
-        const marksDetails = await getAllMarksDetailsService(search, year, prizeIdParam, page, limit);
+
+        const parseYear = (value) => {
+            const parsed = parseInt(value, 10);
+            return !isNaN(parsed) && parsed > 0 ? parsed : null;
+        };
+        const yearParam = year && year !== 'all' ? parseYear(year) : null;
+        let yearFromParam = year_from && year_from !== 'all' ? parseYear(year_from) : null;
+        let yearToParam = year_to && year_to !== 'all' ? parseYear(year_to) : null;
+        if (yearFromParam && yearToParam && yearFromParam > yearToParam) {
+            [yearFromParam, yearToParam] = [yearToParam, yearFromParam];
+        }
+
+        const marksDetails = await getAllMarksDetailsService(search, yearParam, yearFromParam, yearToParam, prizeIdParam, page, limit);
         res.status(200).json({
             marks_details: marksDetails.items,
             pagination: marksDetails.pagination,

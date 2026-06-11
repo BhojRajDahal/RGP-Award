@@ -113,7 +113,7 @@ export const getApplicationIdsHavingMarks = async (applicationIds = []) => {
 };
 
 // Get all marks details with user and prize information
-export const getAllMarksDetails = async (search = '', year = null, prize_id = null, limit = 50, offset = 0) => {
+export const getAllMarksDetails = async (search = '', year = null, year_from = null, year_to = null, prize_id = null, limit = 50, offset = 0) => {
     try {
         const pool = await connectToDatabase();
         let sql = `
@@ -146,21 +146,33 @@ export const getAllMarksDetails = async (search = '', year = null, prize_id = nu
         
         const params = [];
         
-        // Add search filter (search in name, email, or award)
+        // Add search filter (search in app id, name, email, or award)
         if (search && search.trim() !== '') {
             sql += ` AND (
+                CAST(m.application_id AS CHAR) LIKE ? OR
+                CONCAT('APP-', m.application_id) LIKE ? OR
+                CONCAT('APP-', LPAD(m.application_id, 3, '0')) LIKE ? OR
                 u.full_name LIKE ? OR 
                 u.email LIKE ? OR 
                 p.title LIKE ?
             )`;
             const searchPattern = `%${search.trim()}%`;
-            params.push(searchPattern, searchPattern, searchPattern);
+            params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
         }
         
-        // Add year filter
+        // Add exact year or year range filter
         if (year) {
             sql += ` AND YEAR(a.submitted_at) = ?`;
             params.push(year);
+        } else {
+            if (year_from) {
+                sql += ` AND YEAR(a.submitted_at) >= ?`;
+                params.push(year_from);
+            }
+            if (year_to) {
+                sql += ` AND YEAR(a.submitted_at) <= ?`;
+                params.push(year_to);
+            }
         }
         
         // Add prize filter
@@ -170,7 +182,7 @@ export const getAllMarksDetails = async (search = '', year = null, prize_id = nu
         }
         
         const { clause } = safeLimitOffset(limit, offset);
-        sql += ` ORDER BY p.title ASC, m.created_at DESC ${clause}`;
+        sql += ` ORDER BY m.created_at DESC ${clause}`;
 
         const [rows] = await pool.execute(sql, params);
         return rows;
@@ -179,7 +191,7 @@ export const getAllMarksDetails = async (search = '', year = null, prize_id = nu
     }
 };
 
-export const getAllMarksDetailsCount = async (search = '', year = null, prize_id = null) => {
+export const getAllMarksDetailsCount = async (search = '', year = null, year_from = null, year_to = null, prize_id = null) => {
     const pool = await connectToDatabase();
     let sql = `
       SELECT COUNT(*) AS total
@@ -191,13 +203,29 @@ export const getAllMarksDetailsCount = async (search = '', year = null, prize_id
     `;
     const params = [];
     if (search && search.trim() !== '') {
-        sql += ` AND (u.full_name LIKE ? OR u.email LIKE ? OR p.title LIKE ?)`;
+        sql += ` AND (
+            CAST(m.application_id AS CHAR) LIKE ? OR
+            CONCAT('APP-', m.application_id) LIKE ? OR
+            CONCAT('APP-', LPAD(m.application_id, 3, '0')) LIKE ? OR
+            u.full_name LIKE ? OR
+            u.email LIKE ? OR
+            p.title LIKE ?
+        )`;
         const sp = `%${search.trim()}%`;
-        params.push(sp, sp, sp);
+        params.push(sp, sp, sp, sp, sp, sp);
     }
     if (year) {
         sql += ` AND YEAR(a.submitted_at) = ?`;
         params.push(year);
+    } else {
+        if (year_from) {
+            sql += ` AND YEAR(a.submitted_at) >= ?`;
+            params.push(year_from);
+        }
+        if (year_to) {
+            sql += ` AND YEAR(a.submitted_at) <= ?`;
+            params.push(year_to);
+        }
     }
     if (prize_id) {
         sql += ` AND p.prize_id = ?`;

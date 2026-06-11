@@ -7,7 +7,7 @@ import { ApplicationWizard } from "@/components/application/application-wizard"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function ApplyPage({ params }: { params: Promise<{ id: string }> }) {
-  const { isAuthenticated, isAdmin, isChecking } = useAuth()
+  const { isAuthenticated, isAdmin, isChecking } = useAuth({ requireAuth: true })
   const router = useRouter()
   const { id } = use(params)
   const currentYear = new Date().getFullYear()

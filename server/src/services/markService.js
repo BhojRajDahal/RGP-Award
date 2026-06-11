@@ -92,14 +92,14 @@ export const deleteMarkService = async (mark_id) => {
 };
 
 // Service to get all marks details
-export const getAllMarksDetailsService = async (search = '', year = null, prize_id = null, page = 1, limit = 50) => {
+export const getAllMarksDetailsService = async (search = '', year = null, year_from = null, year_to = null, prize_id = null, page = 1, limit = 50) => {
     try {
         const safePage = Math.max(Number(page) || 1, 1);
         const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
         const offset = (safePage - 1) * safeLimit;
         const [items, totalItems] = await Promise.all([
-            getAllMarksDetails(search, year, prize_id, safeLimit, offset),
-            getAllMarksDetailsCount(search, year, prize_id),
+            getAllMarksDetails(search, year, year_from, year_to, prize_id, safeLimit, offset),
+            getAllMarksDetailsCount(search, year, year_from, year_to, prize_id),
         ]);
         return {
             items,

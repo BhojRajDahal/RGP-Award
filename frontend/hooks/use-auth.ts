@@ -20,6 +20,7 @@ type UseAuthOptions = {
   requireAuth?: boolean
   requireAdmin?: boolean
   redirectTo?: string
+  checkSession?: boolean
 }
 
 export function useAuth(options?: UseAuthOptions) {
@@ -31,6 +32,33 @@ export function useAuth(options?: UseAuthOptions) {
   const requireAuth = options?.requireAuth ?? false
   const requireAdmin = options?.requireAdmin ?? false
   const redirectTo = options?.redirectTo ?? "/login"
+  const checkSession = options?.checkSession
+
+  const hasStoredAuthHint = useCallback(() => {
+    if (typeof window === "undefined") return false
+    return Boolean(
+      localStorage.getItem("nast_token") ||
+        localStorage.getItem("adminToken") ||
+        localStorage.getItem("evaluatorToken")
+    )
+  }, [])
+
+  const clearStoredAuth = useCallback(() => {
+    if (typeof window === "undefined") return
+    localStorage.removeItem("nast_token")
+    localStorage.removeItem("nast_user")
+    localStorage.removeItem("token")
+    localStorage.removeItem("adminToken")
+    localStorage.removeItem("adminData")
+    localStorage.removeItem("evaluatorToken")
+    localStorage.removeItem("evaluatorData")
+  }, [])
+
+  const shouldCheckSession = useCallback(() => {
+    if (requireAuth || requireAdmin || checkSession === true) return true
+    if (checkSession === false) return false
+    return hasStoredAuthHint()
+  }, [checkSession, hasStoredAuthHint, requireAdmin, requireAuth])
 
   const syncFromStorage = useCallback(async () => {
     try {
@@ -39,21 +67,38 @@ export function useAuth(options?: UseAuthOptions) {
       setUser(authUser)
       setToken(authUser ? "cookie-session" : null)
     } catch {
+      clearStoredAuth()
       setUser(null)
       setToken(null)
     } finally {
       setIsChecking(false)
     }
-  }, [])
+  }, [clearStoredAuth])
 
   useEffect(() => {
+    if (!shouldCheckSession()) {
+      setUser(null)
+      setToken(null)
+      setIsChecking(false)
+      return
+    }
+
+    setIsChecking(true)
     syncFromStorage().catch(() => {
       setIsChecking(false)
     })
-  }, [syncFromStorage])
+  }, [shouldCheckSession, syncFromStorage])
 
   useEffect(() => {
-    const handleAuthChange = () => syncFromStorage()
+    const handleAuthChange = () => {
+      if (shouldCheckSession()) {
+        syncFromStorage()
+      } else {
+        setUser(null)
+        setToken(null)
+        setIsChecking(false)
+      }
+    }
 
     if (typeof window !== "undefined") {
       window.addEventListener(AUTH_EVENT, handleAuthChange)
@@ -66,7 +111,7 @@ export function useAuth(options?: UseAuthOptions) {
         window.removeEventListener("storage", handleAuthChange)
       }
     }
-  }, [syncFromStorage])
+  }, [shouldCheckSession, syncFromStorage])
 
   useEffect(() => {
     if (isChecking) {
@@ -89,10 +134,13 @@ export function useAuth(options?: UseAuthOptions) {
     }
 
     apiClient.post("/api/auth/logout").finally(() => {
+      clearStoredAuth()
+      setUser(null)
+      setToken(null)
       window.dispatchEvent(new Event(AUTH_EVENT))
       router.push(redirectTo)
     })
-  }, [router])
+  }, [clearStoredAuth, router])
 
   return {
     user,

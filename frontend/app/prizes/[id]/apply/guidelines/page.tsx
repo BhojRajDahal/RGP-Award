@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/use-auth"
 const awardGuidelinesPdfUrl = "/Award%20guidelines.pdf"
 
 export default function GuidelinesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { isAuthenticated, isAdmin, isChecking } = useAuth()
+  const { isAuthenticated, isAdmin, isChecking } = useAuth({ requireAuth: true })
   const router = useRouter()
   const { id } = use(params)
 

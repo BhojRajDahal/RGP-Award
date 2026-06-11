@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,12 +21,6 @@ export default function EvaluatorLoginPage() {
     password: "",
   })
   const [status, setStatus] = useState<{ type: string; text: string }>({ type: "", text: "" })
-
-  useEffect(() => {
-    apiClient.get("/api/auth/me").then((res) => {
-      if (res.data?.role === "evaluator") router.replace("/evaluator/dashboard")
-    }).catch(() => {})
-  }, [router])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

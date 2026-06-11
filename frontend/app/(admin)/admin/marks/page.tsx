@@ -74,7 +74,8 @@ export default function MarksDetailsPage() {
   const [displayedMarks, setDisplayedMarks] = useState<MarkDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedYear, setSelectedYear] = useState<string>("all")
+  const [selectedYearFrom, setSelectedYearFrom] = useState<string>("all")
+  const [selectedYearTo, setSelectedYearTo] = useState<string>("all")
   const [selectedPrize, setSelectedPrize] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [years, setYears] = useState<number[]>([])
@@ -105,8 +106,11 @@ export default function MarksDetailsPage() {
       if (searchQuery.trim()) {
         params.append('search', searchQuery.trim())
       }
-      if (selectedYear && selectedYear !== 'all') {
-        params.append('year', selectedYear)
+      if (selectedYearFrom && selectedYearFrom !== 'all') {
+        params.append('year_from', selectedYearFrom)
+      }
+      if (selectedYearTo && selectedYearTo !== 'all') {
+        params.append('year_to', selectedYearTo)
       }
       if (selectedPrize && selectedPrize !== 'all') {
         params.append('prize_id', selectedPrize)
@@ -126,7 +130,7 @@ export default function MarksDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, selectedYear, selectedPrize])
+  }, [searchQuery, selectedYearFrom, selectedYearTo, selectedPrize])
 
   const fetchYears = async () => {
     try {
@@ -173,8 +177,13 @@ export default function MarksDetailsPage() {
     setCurrentPage(1)
   }
 
-  const handleYearChange = (value: string) => {
-    setSelectedYear(value)
+  const handleYearFromChange = (value: string) => {
+    setSelectedYearFrom(value)
+    setCurrentPage(1)
+  }
+
+  const handleYearToChange = (value: string) => {
+    setSelectedYearTo(value)
     setCurrentPage(1)
   }
 
@@ -334,7 +343,15 @@ export default function MarksDetailsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Marks Details</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Marks Details
+            {loading && marksDetails.length > 0 && (
+              <span className="inline-flex items-center gap-1 text-sm font-normal text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Updating
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -342,21 +359,37 @@ export default function MarksDetailsPage() {
               <Label htmlFor="search">Search</Label>
               <Input
                 id="search"
-                placeholder="Search by name, email, or award..."
+                placeholder="Search by APP ID, name, email, or award..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="sm:w-48">
-              <Label htmlFor="year-filter">Filter Year</Label>
-              <Select value={selectedYear} onValueChange={handleYearChange}>
-                <SelectTrigger id="year-filter">
-                  <SelectValue placeholder="All Years" />
+            <div className="sm:w-40">
+              <Label htmlFor="year-from-filter">From Year</Label>
+              <Select value={selectedYearFrom} onValueChange={handleYearFromChange}>
+                <SelectTrigger id="year-from-filter">
+                  <SelectValue placeholder="From Year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
+                  <SelectItem value="all">Any Year</SelectItem>
                   {years.map((year) => (
-                    <SelectItem key={year} value={String(year)}>
+                    <SelectItem key={`from-${year}`} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:w-40">
+              <Label htmlFor="year-to-filter">To Year</Label>
+              <Select value={selectedYearTo} onValueChange={handleYearToChange}>
+                <SelectTrigger id="year-to-filter">
+                  <SelectValue placeholder="To Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any Year</SelectItem>
+                  {years.map((year) => (
+                    <SelectItem key={`to-${year}`} value={String(year)}>
                       {year}
                     </SelectItem>
                   ))}
@@ -381,7 +414,7 @@ export default function MarksDetailsPage() {
             </div>
           </div>
 
-          {loading ? (
+          {loading && marksDetails.length === 0 ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
@@ -394,6 +427,15 @@ export default function MarksDetailsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50 whitespace-nowrap"
+                      onClick={() => handleSort('application_id')}
+                    >
+                      <div className="flex items-center gap-2">
+                        APP ID
+                        <ArrowUpDown className="h-4 w-4" />
+                      </div>
+                    </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Phone No.</TableHead>
                     <TableHead>Email</TableHead>
@@ -427,6 +469,9 @@ export default function MarksDetailsPage() {
                 <TableBody>
                   {paginatedMarks.map((mark) => (
                     <TableRow key={mark.mark_id}>
+                      <TableCell className="font-mono tabular-nums">
+                        {mark.application_id}
+                      </TableCell>
                       <TableCell className="font-medium">{mark.name}</TableCell>
                       <TableCell>{mark.phone || "N/A"}</TableCell>
                       <TableCell>{mark.email}</TableCell>

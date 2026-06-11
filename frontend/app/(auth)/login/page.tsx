@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 export default function LoginPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { isAuthenticated, isAdmin } = useAuth()
+  const { isAuthenticated, isAdmin } = useAuth({ checkSession: false })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formValues, setFormValues] = useState({
