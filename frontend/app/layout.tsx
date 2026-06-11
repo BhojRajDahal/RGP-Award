@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { BootSplashLayer } from "@/components/boot-splash"
 import { BootSplashClient } from "@/components/boot-splash-client"
 import { I18nProvider } from "@/lib/i18n-context"
@@ -46,7 +45,6 @@ export default function RootLayout({
         <BootSplashClient />
         <I18nProvider>{children}</I18nProvider>
         <Toaster />
-        <Analytics />
       </body>
     </html>
   )

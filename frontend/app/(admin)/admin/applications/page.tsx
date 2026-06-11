@@ -92,6 +92,7 @@ export default function AdminApplicationsPage() {
   const [filter, setFilter] = useState("All")
   const [awardFilter, setAwardFilter] = useState("all")
   const [yearFilter, setYearFilter] = useState("all")
+  const [marksFilter, setMarksFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [applicantProfile, setApplicantProfile] = useState<ApplicationDisplay | null>(null)
   const [userProfileData, setUserProfileData] = useState<any>(null)
@@ -276,17 +277,22 @@ export default function AdminApplicationsPage() {
     return applications.filter((app) => {
       if (filter !== "All" && app.status !== filter) return false
       if (awardFilter !== "all" && app.prize !== awardFilter) return false
+      if (marksFilter !== "all") {
+        const hasMarks = applicationsWithMarks.has(app.application_id)
+        if (marksFilter === "assigned" && !hasMarks) return false
+        if (marksFilter === "unassigned" && hasMarks) return false
+      }
       if (yearFilter !== "all") {
         const y = Number.parseInt(yearFilter, 10)
         if (app.submittedYear !== y) return false
       }
       return true
     })
-  }, [applications, filter, awardFilter, yearFilter])
+  }, [applications, filter, awardFilter, yearFilter, marksFilter, applicationsWithMarks])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [filter, awardFilter, yearFilter])
+  }, [filter, awardFilter, yearFilter, marksFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredApps.length / APPLICATIONS_PER_PAGE))
 
@@ -621,6 +627,16 @@ export default function AdminApplicationsPage() {
                   {y}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={marksFilter} onValueChange={setMarksFilter}>
+            <SelectTrigger className="w-[min(100%,11rem)] sm:w-[11rem]">
+              <SelectValue placeholder="All marks" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All marks</SelectItem>
+              <SelectItem value="assigned">{t("admin.applications.marks_assigned")}</SelectItem>
+              <SelectItem value="unassigned">Marks not assigned</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filter} onValueChange={setFilter}>
