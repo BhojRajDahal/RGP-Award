@@ -21,9 +21,14 @@ import {
     updateGalleryItemController,
     deleteGalleryItemController,
 } from '../controllers/galleryController.js';
+import {
+    getEmailSettingsController,
+    updateEmailSettingsController,
+    testEmailSettingsController,
+} from '../controllers/emailSettingsController.js';
 import { verifyAdminToken } from '../middleware/adminAuth.js';
 import { uploadWinnerPhoto } from '../middleware/upload.js';
-import { getAllMarksDetailsController, getDistinctYearsController, getDistinctPrizesController } from '../controllers/applicationController.js';
+import { getAllMarksDetailsController, getDistinctYearsController, getDistinctPrizesController, updateWinnerStatusController } from '../controllers/applicationController.js';
 import { adminLimiter, loginLimiterAdmin } from '../middleware/rateLimiters.js';
 
 const router = Router();
@@ -34,6 +39,11 @@ router.get('/users', verifyAdminToken, getUsers);
 router.get('/admins', verifyAdminToken, getAdmins);
 router.delete('/admins/:aid', verifyAdminToken, deleteAdminController);
 router.delete('/users/:id', verifyAdminToken, deleteUserController);
+
+// Email Settings Routes
+router.get('/email-settings', verifyAdminToken, getEmailSettingsController);
+router.put('/email-settings', verifyAdminToken, updateEmailSettingsController);
+router.post('/email-settings/test', verifyAdminToken, testEmailSettingsController);
 
 // Evaluator Routes
 router.post('/evaluators', verifyAdminToken, registerEvaluator);
@@ -67,6 +77,7 @@ router.delete('/gallery/:gallery_id', verifyAdminToken, deleteGalleryItemControl
 router.get('/marks-details', verifyAdminToken, getAllMarksDetailsController);
 router.get('/marks-details/years', verifyAdminToken, getDistinctYearsController);
 router.get('/marks-details/prizes', verifyAdminToken, getDistinctPrizesController);
+router.patch('/marks/:mark_id/winner', verifyAdminToken, updateWinnerStatusController);
 
 export default router;
 

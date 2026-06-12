@@ -87,10 +87,10 @@ app.use((req, res, next) => {
 });
 
 const publicDir = path.join(__dirname, '..', 'public');
-app.get('/api/files/:bucket/:filename', authenticate, (req, res) => {
-  const { bucket, filename } = req.params;
-  const allowedBuckets = new Set(['photos', 'files', 'winnerPhotoes']);
-  if (!allowedBuckets.has(bucket)) return res.status(400).json({ msg: 'Invalid file bucket' });
+const allowedFileBuckets = new Set(['photos', 'files', 'winnerPhotoes']);
+
+const sendFileFromBucket = (res, bucket, filename) => {
+  if (!allowedFileBuckets.has(bucket)) return res.status(400).json({ msg: 'Invalid file bucket' });
 
   const safeFilename = path.basename(filename);
   if (safeFilename !== filename) return res.status(400).json({ msg: 'Invalid filename' });
@@ -104,6 +104,16 @@ app.get('/api/files/:bucket/:filename', authenticate, (req, res) => {
       if (!res.headersSent) res.status(404).json({ msg: 'File not found' });
     }
   });
+};
+
+// Gallery winner photos are public because they are shown on the public award history page.
+app.get('/api/files/winnerPhotoes/:filename', (req, res) => {
+  return sendFileFromBucket(res, 'winnerPhotoes', req.params.filename);
+});
+
+app.get('/api/files/:bucket/:filename', authenticate, (req, res) => {
+  const { bucket, filename } = req.params;
+  return sendFileFromBucket(res, bucket, filename);
 });
 
 app.get('/', (req, res) => {

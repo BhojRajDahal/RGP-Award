@@ -68,7 +68,7 @@ export const revokePrincipalSessions = async (principal) => {
 export const setAuthCookies = (res, { accessToken, refreshToken }) => {
   res.cookie('access_token', accessToken, {
     ...cookieBaseOptions,
-    maxAge: 15 * 60 * 1000,
+    maxAge: 3 * 60 * 60 * 1000,
   });
   res.cookie('refresh_token', refreshToken, {
     ...cookieBaseOptions,

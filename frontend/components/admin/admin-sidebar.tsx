@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Trophy, Users, FileCheck, LogOut, FileText, ClipboardCheck, Images, BarChart } from "lucide-react"
+import { LayoutDashboard, Trophy, Users, FileCheck, LogOut, FileText, ClipboardCheck, Images, BarChart, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const adminSidebarItems = [
@@ -15,6 +15,7 @@ const adminSidebarItems = [
   { icon: FileText, label: "Common Fields", href: "/admin/fields" },
   { icon: BarChart, label: "Marks Details", href: "/admin/marks" },
   { icon: Images, label: "Manage Gallery", href: "/admin/gallery" },
+  { icon: Settings, label: "Admin Settings", href: "/admin/settings" },
 ]
 
 export function AdminSidebar() {

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Loader2, Trash2, Pencil, Image as ImageIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -32,16 +33,21 @@ interface GalleryItem {
   gallery_id: number
   name: string
   award: string
+  description?: string | null
   photo: string
   year: number
   created_at: string
 }
+
+const GALLERY_ITEMS_PER_PAGE = 9
 
 export default function GalleryPage() {
   const { token } = useAuth({ requireAuth: true, requireAdmin: true })
 
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([])
   const [awards, setAwards] = useState<Array<{ prize_id: number; title: string }>>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -52,6 +58,7 @@ export default function GalleryPage() {
   const [formData, setFormData] = useState({
     name: "",
     award: "",
+    description: "",
     year: "",
     photo: "",
   })
@@ -59,11 +66,14 @@ export default function GalleryPage() {
   const [editingItem, setEditingItem] = useState<GalleryItem | null>(null)
 
   useEffect(() => {
-    fetchGalleryItems()
     fetchAwards()
   }, [])
 
-  const fetchGalleryItems = async () => {
+  useEffect(() => {
+    fetchGalleryItems(currentPage)
+  }, [currentPage])
+
+  const fetchGalleryItems = async (page = currentPage) => {
     setLoading(true)
     try {
       const adminToken =
@@ -77,17 +87,20 @@ export default function GalleryPage() {
         return
       }
 
-      const response = await apiClient.get("/api/admin/gallery?limit=100&page=1", {
+      const response = await apiClient.get(`/api/admin/gallery?limit=${GALLERY_ITEMS_PER_PAGE}&page=${page}`, {
         headers: {
           Authorization: `Bearer ${adminToken}`,
         },
       })
 
+      const pagination = response.data?.pagination
       setGalleryItems(itemsFromPagedApiResponse<GalleryItem>(response.data))
+      setTotalPages(Math.max(1, Number(pagination?.totalPages) || 1))
     } catch (err: any) {
       console.error("Gallery fetch error:", err)
       toast.error(err.response?.data?.msg || "Failed to fetch gallery items")
       setGalleryItems([])
+      setTotalPages(1)
     } finally {
       setLoading(false)
     }
@@ -122,7 +135,7 @@ export default function GalleryPage() {
 
   const handleAddPhoto = () => {
     setIsEditMode(false)
-    setFormData({ name: "", award: "", year: "", photo: "" })
+    setFormData({ name: "", award: "", description: "", year: "", photo: "" })
     setSelectedFile(null)
     setPreviewUrl(null)
     setEditingItem(null)
@@ -135,6 +148,7 @@ export default function GalleryPage() {
     setFormData({
       name: item.name,
       award: item.award,
+      description: item.description || "",
       year: item.year.toString(),
       photo: item.photo,
     })
@@ -178,6 +192,7 @@ export default function GalleryPage() {
       const formDataToSend = new FormData()
       formDataToSend.append("name", formData.name)
       formDataToSend.append("award", formData.award)
+      formDataToSend.append("description", formData.description)
       formDataToSend.append("year", formData.year)
 
       if (selectedFile) {
@@ -201,7 +216,12 @@ export default function GalleryPage() {
       }
 
       setIsDialogOpen(false)
-      fetchGalleryItems()
+      if (isEditMode) {
+        fetchGalleryItems(currentPage)
+      } else {
+        setCurrentPage(1)
+        fetchGalleryItems(1)
+      }
       resetForm()
     } catch (err: any) {
       console.error("Submit error:", err)
@@ -234,7 +254,11 @@ export default function GalleryPage() {
       })
 
       toast.success("Gallery item deleted successfully")
-      fetchGalleryItems()
+      if (galleryItems.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1)
+      } else {
+        fetchGalleryItems(currentPage)
+      }
     } catch (err: any) {
       console.error("Delete error:", err)
       toast.error(err.response?.data?.msg || "Failed to delete gallery item")
@@ -242,7 +266,7 @@ export default function GalleryPage() {
   }
 
   const resetForm = () => {
-    setFormData({ name: "", award: "", year: "", photo: "" })
+    setFormData({ name: "", award: "", description: "", year: "", photo: "" })
     setSelectedFile(null)
     setPreviewUrl(null)
     setEditingItem(null)
@@ -285,51 +309,84 @@ export default function GalleryPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {galleryItems.map((item) => (
-            <Card key={item.gallery_id} className="overflow-hidden">
-              <div className="aspect-video relative bg-muted">
-                {item.photo ? (
-                  <Image
-                    src={getFileUrl(item.photo)}
-                    alt={item.name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">Award: {item.award}</p>
-                <p className="text-sm text-muted-foreground mb-4">Year: {item.year}</p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(item)}
-                    className="flex-1"
-                  >
-                    <Pencil className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDelete(item.gallery_id)}
-                    className="flex-1"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {galleryItems.map((item) => (
+              <Card key={item.gallery_id} className="overflow-hidden">
+                <div className="aspect-video relative bg-muted">
+                  {item.photo ? (
+                    <Image
+                      src={getFileUrl(item.photo)}
+                      alt={item.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">Award: {item.award}</p>
+                  {item.description && (
+                    <p className="text-sm text-muted-foreground mb-2 line-clamp-3">{item.description}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground mb-4">Year: {item.year}</p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(item)}
+                      className="flex-1"
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(item.gallery_id)}
+                      className="flex-1"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "outline" : "ghost"}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="ghost"
+                onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Add/Edit Dialog */}
@@ -395,6 +452,17 @@ export default function GalleryPage() {
                   </SelectContent>
                 </Select>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Enter description"
+                rows={4}
+              />
             </div>
 
             <div className="space-y-2">

@@ -93,6 +93,7 @@ export default function AdminApplicationsPage() {
   const [awardFilter, setAwardFilter] = useState("all")
   const [yearFilter, setYearFilter] = useState("all")
   const [marksFilter, setMarksFilter] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [applicantProfile, setApplicantProfile] = useState<ApplicationDisplay | null>(null)
   const [userProfileData, setUserProfileData] = useState<any>(null)
@@ -274,7 +275,24 @@ export default function AdminApplicationsPage() {
   }, [applications])
 
   const filteredApps = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
     return applications.filter((app) => {
+      if (query) {
+        const normalizedQuery = query.replace(/^app-?/i, "").replace(/^0+/, "")
+        const normalizedAppId = String(app.application_id)
+        const searchableValues = [
+          app.id,
+          normalizedAppId,
+          app.applicant,
+          app.email,
+        ].map((value) => String(value || "").toLowerCase())
+
+        const matchesSearch =
+          searchableValues.some((value) => value.includes(query)) ||
+          (normalizedQuery !== "" && normalizedAppId.includes(normalizedQuery))
+
+        if (!matchesSearch) return false
+      }
       if (filter !== "All" && app.status !== filter) return false
       if (awardFilter !== "all" && app.prize !== awardFilter) return false
       if (marksFilter !== "all") {
@@ -288,11 +306,11 @@ export default function AdminApplicationsPage() {
       }
       return true
     })
-  }, [applications, filter, awardFilter, yearFilter, marksFilter, applicationsWithMarks])
+  }, [applications, searchQuery, filter, awardFilter, yearFilter, marksFilter, applicationsWithMarks])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [filter, awardFilter, yearFilter, marksFilter])
+  }, [searchQuery, filter, awardFilter, yearFilter, marksFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredApps.length / APPLICATIONS_PER_PAGE))
 
@@ -603,6 +621,12 @@ export default function AdminApplicationsPage() {
           <Button variant="outline" onClick={handleExportCSV}>
             <Download className="mr-2 h-4 w-4" /> {t("admin.applications.export_csv")}
           </Button>
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search ID or name"
+            className="w-[min(100%,14rem)] sm:w-[14rem]"
+          />
           <Select value={awardFilter} onValueChange={setAwardFilter}>
             <SelectTrigger className="w-[min(100%,12rem)] sm:w-[12rem]">
               <SelectValue placeholder={t("admin.applications.filter_award")} />

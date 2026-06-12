@@ -13,7 +13,7 @@ export const createMark = async (application_id, admin_id, marks, remarks = null
         
         // Fetch and return the created mark
         const selectSql = `
-            SELECT mark_id, application_id, admin_id, marks, remarks, created_at
+            SELECT mark_id, application_id, admin_id, marks, is_winner, remarks, created_at
             FROM application_marks
             WHERE mark_id = ?
         `;
@@ -77,6 +77,22 @@ export const updateMark = async (mark_id, marks, remarks = null) => {
     }
 };
 
+export const updateWinnerStatus = async (mark_id, is_winner) => {
+    try {
+        const pool = await connectToDatabase();
+        const sql = `
+            UPDATE application_marks
+            SET is_winner = ?
+            WHERE mark_id = ?
+        `;
+        await pool.execute(sql, [is_winner ? 1 : 0, mark_id]);
+
+        return await getMarkById(mark_id);
+    } catch (error) {
+        throw new Error(`Failed to update winner status: ${error.message}`);
+    }
+};
+
 // Delete mark
 export const deleteMark = async (mark_id) => {
     try {
@@ -121,6 +137,7 @@ export const getAllMarksDetails = async (search = '', year = null, year_from = n
                 m.mark_id,
                 m.application_id,
                 m.marks,
+                m.is_winner,
                 m.remarks,
                 m.created_at,
                 u.uid as user_id,

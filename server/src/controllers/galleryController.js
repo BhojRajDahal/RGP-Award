@@ -3,7 +3,7 @@ import { createGalleryItemService, getAllGalleryItemsService, getGalleryItemById
 // Create a new gallery item
 export const createGalleryItemController = async (req, res) => {
     try {
-        const { name, award, year } = req.body;
+        const { name, award, description, year } = req.body;
         const photo = req.file ? `winnerPhotoes/${req.file.filename}` : null;
 
         if (!name || !award || !year) {
@@ -14,7 +14,7 @@ export const createGalleryItemController = async (req, res) => {
             return res.status(400).json({ msg: 'Photo is required' });
         }
 
-        const galleryItem = await createGalleryItemService(name, award, photo, year);
+        const galleryItem = await createGalleryItemService(name, award, description, photo, year);
         
         res.status(201).json({
             msg: 'Gallery item created successfully',
@@ -66,7 +66,7 @@ export const getGalleryItemByIdController = async (req, res) => {
 export const updateGalleryItemController = async (req, res) => {
     try {
         const { gallery_id } = req.params;
-        const { name, award, year } = req.body;
+        const { name, award, description, year } = req.body;
         let photo = req.file ? `winnerPhotoes/${req.file.filename}` : null;
 
         if (!name || !award || !year) {
@@ -84,7 +84,7 @@ export const updateGalleryItemController = async (req, res) => {
             }
         }
 
-        const galleryItem = await updateGalleryItemService(gallery_id, name, award, photo, year);
+        const galleryItem = await updateGalleryItemService(gallery_id, name, award, description, photo, year);
         
         res.status(200).json({
             msg: 'Gallery item updated successfully',

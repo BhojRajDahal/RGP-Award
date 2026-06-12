@@ -1,34 +1,62 @@
 import nodemailer from 'nodemailer';
+import { getActiveEmailSettings } from './emailSettingsService.js';
+
+const getEnvEmailSettings = () => {
+  const smtpUser = process.env.SMTP_USER?.trim();
+  const smtpPass = process.env.SMTP_PASS || '';
+
+  if (!smtpUser || !smtpPass) return null;
+
+  return {
+    smtp_host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    smtp_port: parseInt(process.env.SMTP_PORT || '587', 10),
+    smtp_secure: process.env.SMTP_SECURE === 'true',
+    smtp_user: smtpUser,
+    smtp_pass: smtpPass,
+    from_email: process.env.SMTP_FROM || smtpUser,
+    from_name: process.env.SMTP_FROM_NAME || '',
+  };
+};
+
+const getEmailSettingsForTransport = async () => {
+  try {
+    return await getActiveEmailSettings();
+  } catch (error) {
+    const fallback = getEnvEmailSettings();
+    if (process.env.NODE_ENV !== 'production' && fallback) {
+      console.warn('[EmailService] Using SMTP_* environment fallback for local email delivery.');
+      return fallback;
+    }
+
+    throw error;
+  }
+};
+
+const formatFromAddress = (email, name) => {
+  if (!name) return email;
+  return `"${name.replace(/"/g, '\\"')}" <${email}>`;
+};
 
 // Create reusable transporter object using SMTP transport
-const createTransporter = () => {
-  const smtpUser = process.env.SMTP_USER?.trim();
-  // Gmail app passwords are often displayed with spaces; SMTP auth expects the raw 16-char value.
-  const smtpPassRaw = process.env.SMTP_PASS || '';
-  const smtpPass = smtpPassRaw.replace(/\s+/g, '');
-  
-  if (!smtpUser || !smtpPass) {
-    throw new Error('SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS in environment variables.');
-  }
+const createTransporter = async () => {
+  const settings = await getEmailSettingsForTransport();
 
-  if (smtpPassRaw !== smtpPass) {
-    console.warn('[EmailService] SMTP_PASS contained whitespace; using normalized value for authentication.');
-  }
-  
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+  const transporter = nodemailer.createTransport({
+    host: settings.smtp_host,
+    port: settings.smtp_port,
+    secure: settings.smtp_secure, // true for 465, false for 587/STARTTLS
     auth: {
-      user: smtpUser,
-      pass: smtpPass, // Must be an App Password for Gmail
+      user: settings.smtp_user,
+      pass: settings.smtp_pass,
     },
   });
+
+  return { transporter, settings };
 };
 
 export const sendEmail = async (to, subject, text, html = null) => {
   try {
-    const transporter = createTransporter();
+    const { transporter, settings } = await createTransporter();
     
     // Verify connection before sending
     try {
@@ -37,13 +65,13 @@ export const sendEmail = async (to, subject, text, html = null) => {
     } catch (verifyError) {
       console.error('[EmailService] SMTP verification failed:', verifyError.message);
       if (verifyError.message.includes('Invalid login') || verifyError.message.includes('BadCredentials') || verifyError.message.includes('Username and Password not accepted')) {
-        throw new Error('Email authentication failed. For Gmail, you must use an App Password (not your regular password). Steps: 1) Enable 2FA on your Google account, 2) Generate an App Password from https://myaccount.google.com/apppasswords, 3) Use that App Password as SMTP_PASS in your .env file.');
+        throw new Error('Email authentication failed. Check the SMTP username and password. Some providers allow the mailbox password, while Gmail usually requires an App Password.');
       }
       throw verifyError;
     }
     
     const mailOptions = {
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: formatFromAddress(settings.from_email || settings.smtp_user, settings.from_name),
       to: to,
       subject: subject,
       text: text,
@@ -58,11 +86,24 @@ export const sendEmail = async (to, subject, text, html = null) => {
     
     // Provide helpful error messages
     if (error.message.includes('Invalid login') || error.message.includes('BadCredentials') || error.message.includes('Username and Password not accepted')) {
-      throw new Error('Email authentication failed. For Gmail accounts, you must: 1) Enable 2-Factor Authentication, 2) Generate an App Password from https://myaccount.google.com/apppasswords, 3) Use that App Password (not your regular password) as SMTP_PASS in your .env file.');
+      throw new Error('Email authentication failed. Check the SMTP username and password. Some providers allow the mailbox password, while Gmail usually requires an App Password.');
     }
     
     throw error;
   }
+};
+
+export const sendTestEmail = async (to) => {
+  const subject = 'Email Service Test - NAST Portal';
+  const text = `This is a test email from the NAST Portal email service.
+
+If you received this message, your SMTP settings are working.`;
+  const html = `
+    <p>This is a test email from the NAST Portal email service.</p>
+    <p>If you received this message, your SMTP settings are working.</p>
+  `;
+
+  return await sendEmail(to, subject, text, html);
 };
 
 export const sendApprovalEmail = async (userEmail, userName) => {

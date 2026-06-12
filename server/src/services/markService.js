@@ -1,4 +1,4 @@
-import { createMark, deleteMark, getAllMarksDetails, getAllMarksDetailsCount, getDistinctPrizes, getDistinctYears, getMarkById, getMarksByApplicationId, updateMark } from '../model/markModel.js';
+import { createMark, deleteMark, getAllMarksDetails, getAllMarksDetailsCount, getDistinctPrizes, getDistinctYears, getMarkById, getMarksByApplicationId, updateMark, updateWinnerStatus } from '../model/markModel.js';
 
 // Service to create a mark
 export const createMarkService = async (application_id, admin_id, marks, remarks = null) => {
@@ -74,6 +74,22 @@ export const updateMarkService = async (mark_id, marks, remarks = null) => {
         return mark;
     } catch (error) {
         throw new Error(`Failed to update mark: ${error.message}`);
+    }
+};
+
+export const updateWinnerStatusService = async (mark_id, is_winner) => {
+    if (!mark_id) {
+        throw new Error('Mark ID is required');
+    }
+
+    try {
+        const mark = await updateWinnerStatus(mark_id, Boolean(is_winner));
+        if (!mark) {
+            throw new Error('Mark not found');
+        }
+        return mark;
+    } catch (error) {
+        throw new Error(`Failed to update winner status: ${error.message}`);
     }
 };
 

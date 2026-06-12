@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -67,6 +68,7 @@ interface MarkDetail {
   prize_id: number
   award: string
   year: number
+  is_winner: boolean | number
 }
 
 export default function MarksDetailsPage() {
@@ -77,9 +79,11 @@ export default function MarksDetailsPage() {
   const [selectedYearFrom, setSelectedYearFrom] = useState<string>("all")
   const [selectedYearTo, setSelectedYearTo] = useState<string>("all")
   const [selectedPrize, setSelectedPrize] = useState<string>("all")
+  const [selectedWinnerFilter, setSelectedWinnerFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [years, setYears] = useState<number[]>([])
   const [prizes, setPrizes] = useState<{ prize_id: number; award: string }[]>([])
+  const [winnerUpdating, setWinnerUpdating] = useState<Set<number>>(new Set())
   const [sortConfig, setSortConfig] = useState<{ key: keyof MarkDetail | null; direction: 'asc' | 'desc' }>({
     key: null,
     direction: 'asc'
@@ -177,6 +181,11 @@ export default function MarksDetailsPage() {
     setCurrentPage(1)
   }
 
+  const handleWinnerFilterChange = (value: string) => {
+    setSelectedWinnerFilter(value)
+    setCurrentPage(1)
+  }
+
   const handleYearFromChange = (value: string) => {
     setSelectedYearFrom(value)
     setCurrentPage(1)
@@ -205,6 +214,12 @@ export default function MarksDetailsPage() {
   const applySorting = useCallback(() => {
     let sorted = [...marksDetails]
 
+    if (selectedWinnerFilter === "winner") {
+      sorted = sorted.filter((mark) => Boolean(mark.is_winner))
+    } else if (selectedWinnerFilter === "non-winner") {
+      sorted = sorted.filter((mark) => !Boolean(mark.is_winner))
+    }
+
     // Apply sorting
     if (sortConfig.key) {
       sorted.sort((a, b) => {
@@ -231,7 +246,7 @@ export default function MarksDetailsPage() {
     }
 
     setDisplayedMarks(sorted)
-  }, [marksDetails, sortConfig])
+  }, [marksDetails, sortConfig, selectedWinnerFilter])
 
   useEffect(() => {
     fetchYears()
@@ -267,6 +282,50 @@ export default function MarksDetailsPage() {
       setCurrentPage(totalPages)
     }
   }, [currentPage, totalPages])
+
+  const handleWinnerChange = async (mark: MarkDetail, isWinner: boolean) => {
+    const confirmed = window.confirm(
+      isWinner
+        ? `Mark ${mark.name} as a winner for ${mark.award}?`
+        : `Remove winner status from ${mark.name}?`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    const adminToken = getAdminBearer()
+    if (!adminToken) {
+      toast.error("Admin authentication required")
+      return
+    }
+
+    setWinnerUpdating((current) => new Set(current).add(mark.mark_id))
+    try {
+      await apiClient.patch(
+        `/api/admin/marks/${mark.mark_id}/winner`,
+        { is_winner: isWinner },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      )
+
+      const updateMark = (item: MarkDetail) =>
+        item.mark_id === mark.mark_id ? { ...item, is_winner: isWinner } : item
+
+      setMarksDetails((current) => current.map(updateMark))
+      setDisplayedMarks((current) => current.map(updateMark))
+      setViewRow((current) => (current?.mark_id === mark.mark_id ? { ...current, is_winner: isWinner } : current))
+      toast.success(isWinner ? "Marked as winner" : "Removed winner mark")
+    } catch (error: any) {
+      console.error("Error updating winner status:", error)
+      toast.error(error.response?.data?.msg || "Failed to update winner status")
+    } finally {
+      setWinnerUpdating((current) => {
+        const next = new Set(current)
+        next.delete(mark.mark_id)
+        return next
+      })
+    }
+  }
 
   const openViewRemarks = async (mark: MarkDetail) => {
     setViewRow(mark)
@@ -412,6 +471,19 @@ export default function MarksDetailsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="sm:w-40">
+              <Label htmlFor="winner-filter">Winner Status</Label>
+              <Select value={selectedWinnerFilter} onValueChange={handleWinnerFilterChange}>
+                <SelectTrigger id="winner-filter">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="winner">Winners only</SelectItem>
+                  <SelectItem value="non-winner">Non-winners</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {loading && marksDetails.length === 0 ? (
@@ -452,6 +524,7 @@ export default function MarksDetailsPage() {
                     </TableHead>
                     <TableHead>Year</TableHead>
                     <TableHead>Marks</TableHead>
+                    <TableHead>Winner</TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-muted/50 whitespace-nowrap min-w-[9rem]"
                       onClick={() => handleSort("created_at")}
@@ -478,6 +551,19 @@ export default function MarksDetailsPage() {
                       <TableCell>{mark.award}</TableCell>
                       <TableCell>{mark.year}</TableCell>
                       <TableCell className="font-semibold">{mark.marks}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={Boolean(mark.is_winner)}
+                            disabled={winnerUpdating.has(mark.mark_id)}
+                            onCheckedChange={(checked) => handleWinnerChange(mark, checked === true)}
+                            aria-label={`Mark ${mark.name} as winner`}
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {Boolean(mark.is_winner) ? "Yes" : "No"}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                         {formatMarksAssignedAt(mark.created_at)}
                       </TableCell>
@@ -605,6 +691,10 @@ export default function MarksDetailsPage() {
               <div className="grid grid-cols-[140px_1fr] gap-2 border-b border-border/60 pb-2">
                 <dt className="font-medium text-muted-foreground">Marks assigned</dt>
                 <dd>{formatMarksAssignedAt(viewRow.created_at)}</dd>
+              </div>
+              <div className="grid grid-cols-[140px_1fr] gap-2 border-b border-border/60 pb-2">
+                <dt className="font-medium text-muted-foreground">Winner</dt>
+                <dd>{Boolean(viewRow.is_winner) ? "Yes" : "No"}</dd>
               </div>
               <div className="grid grid-cols-[140px_1fr] gap-2 border-b border-border/60 pb-2">
                 <dt className="font-medium text-muted-foreground">Assigned marks</dt>

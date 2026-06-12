@@ -12,7 +12,7 @@ import {
     updateApplicationStatusService,
     sendApplicationRejectionEmailService,
 } from '../services/applicationService.js';
-import { createMarkService, getMarksByApplicationIdService, getAllMarksDetailsService, getDistinctYearsService, getDistinctPrizesService } from '../services/markService.js';
+import { createMarkService, getMarksByApplicationIdService, getAllMarksDetailsService, getDistinctYearsService, getDistinctPrizesService, updateWinnerStatusService } from '../services/markService.js';
 import { enqueueApprovalEmail } from '../queue/emailQueue.js';
 
 // ============================================
@@ -386,6 +386,33 @@ export const getAllMarksDetailsController = async (req, res) => {
         console.error('Error fetching marks details:', error);
         res.status(500).json({
             msg: error.message || 'Failed to fetch marks details',
+            error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        });
+    }
+};
+
+export const updateWinnerStatusController = async (req, res) => {
+    try {
+        const { mark_id } = req.params;
+        const { is_winner } = req.body;
+
+        if (is_winner === undefined || is_winner === null) {
+            return res.status(400).json({ msg: 'Winner status is required' });
+        }
+
+        const winnerValue = is_winner === true || is_winner === 'true' || is_winner === 1 || is_winner === '1';
+        const mark = await updateWinnerStatusService(mark_id, winnerValue);
+        res.status(200).json({
+            msg: 'Winner status updated successfully',
+            mark,
+        });
+    } catch (error) {
+        console.error('Error updating winner status:', error);
+        const statusCode = error.message.includes('required') || error.message.includes('not found')
+            ? (error.message.includes('not found') ? 404 : 400)
+            : 500;
+        res.status(statusCode).json({
+            msg: error.message || 'Failed to update winner status',
             error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
         });
     }

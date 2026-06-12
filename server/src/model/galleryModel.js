@@ -2,18 +2,18 @@ import { connectToDatabase } from '../config/db.js';
 import { safeLimitOffset } from '../utils/pagination.js';
 
 // Create a new gallery item
-export const createGalleryItem = async (name, award, photo, year) => {
+export const createGalleryItem = async (name, award, description, photo, year) => {
     try {
         const pool = await connectToDatabase();
         const sql = `
-            INSERT INTO gallery (name, award, photo, year)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO gallery (name, award, description, photo, year)
+            VALUES (?, ?, ?, ?, ?)
         `;
-        const [result] = await pool.execute(sql, [name, award, photo, year]);
+        const [result] = await pool.execute(sql, [name, award, description || null, photo, year]);
         
         // Fetch and return the created gallery item
         const selectSql = `
-            SELECT gallery_id, name, award, photo, year, created_at
+            SELECT gallery_id, name, award, description, photo, year, created_at
             FROM gallery
             WHERE gallery_id = ?
         `;
@@ -30,9 +30,9 @@ export const getAllGalleryItems = async ({ limit = 25, offset = 0 } = {}) => {
         const pool = await connectToDatabase();
         const { clause } = safeLimitOffset(limit, offset);
         const sql = `
-            SELECT gallery_id, name, award, photo, year, created_at
+            SELECT gallery_id, name, award, description, photo, year, created_at
             FROM gallery
-            ORDER BY year DESC, created_at DESC
+            ORDER BY created_at DESC, gallery_id DESC
             ${clause}
         `;
         const [rows] = await pool.execute(sql);
@@ -53,7 +53,7 @@ export const getGalleryItemById = async (gallery_id) => {
     try {
         const pool = await connectToDatabase();
         const sql = `
-            SELECT gallery_id, name, award, photo, year, created_at
+            SELECT gallery_id, name, award, description, photo, year, created_at
             FROM gallery
             WHERE gallery_id = ?
         `;
@@ -65,15 +65,15 @@ export const getGalleryItemById = async (gallery_id) => {
 };
 
 // Update gallery item
-export const updateGalleryItem = async (gallery_id, name, award, photo, year) => {
+export const updateGalleryItem = async (gallery_id, name, award, description, photo, year) => {
     try {
         const pool = await connectToDatabase();
         const sql = `
             UPDATE gallery
-            SET name = ?, award = ?, photo = ?, year = ?
+            SET name = ?, award = ?, description = ?, photo = ?, year = ?
             WHERE gallery_id = ?
         `;
-        await pool.execute(sql, [name, award, photo, year, gallery_id]);
+        await pool.execute(sql, [name, award, description || null, photo, year, gallery_id]);
         
         // Fetch and return the updated gallery item
         return await getGalleryItemById(gallery_id);

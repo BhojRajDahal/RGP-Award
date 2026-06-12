@@ -1,7 +1,7 @@
 import { createGalleryItem, deleteGalleryItem, getAllGalleryItems, getGalleryItemById, getGalleryItemsCount, updateGalleryItem } from '../model/galleryModel.js';
 
 // Service to create a gallery item
-export const createGalleryItemService = async (name, award, photo, year) => {
+export const createGalleryItemService = async (name, award, description, photo, year) => {
     if (!name || !award || !photo || !year) {
         throw new Error('Name, award, photo, and year are required');
     }
@@ -13,7 +13,7 @@ export const createGalleryItemService = async (name, award, photo, year) => {
     }
 
     try {
-        const galleryItem = await createGalleryItem(name, award, photo, yearValue);
+        const galleryItem = await createGalleryItem(name, award, description?.trim() || null, photo, yearValue);
         return galleryItem;
     } catch (error) {
         throw new Error(`Failed to create gallery item: ${error.message}`);
@@ -62,7 +62,7 @@ export const getGalleryItemByIdService = async (gallery_id) => {
 };
 
 // Service to update gallery item
-export const updateGalleryItemService = async (gallery_id, name, award, photo, year) => {
+export const updateGalleryItemService = async (gallery_id, name, award, description, photo, year) => {
     if (!gallery_id || !name || !award || !photo || !year) {
         throw new Error('Gallery ID, name, award, photo, and year are required');
     }
@@ -74,7 +74,7 @@ export const updateGalleryItemService = async (gallery_id, name, award, photo, y
     }
 
     try {
-        const galleryItem = await updateGalleryItem(gallery_id, name, award, photo, yearValue);
+        const galleryItem = await updateGalleryItem(gallery_id, name, award, description?.trim() || null, photo, yearValue);
         return galleryItem;
     } catch (error) {
         throw new Error(`Failed to update gallery item: ${error.message}`);

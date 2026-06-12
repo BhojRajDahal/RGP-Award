@@ -139,6 +139,7 @@ CREATE TABLE application_marks (
     application_id INT(11) NOT NULL,
     admin_id INT(11) NOT NULL,
     marks DECIMAL(5,2) NOT NULL,
+    is_winner TINYINT(1) NOT NULL DEFAULT 0,
     remarks TEXT DEFAULT NULL,
     status ENUM('assigned') NOT NULL DEFAULT 'assigned',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -163,6 +164,7 @@ CREATE TABLE gallery (
     gallery_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
     award VARCHAR(150) NOT NULL,
+    description TEXT DEFAULT NULL,
     photo VARCHAR(255) NOT NULL,
     year YEAR NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -200,5 +202,27 @@ CREATE TABLE auth_sessions (
     CONSTRAINT fk_session_user FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE,
     CONSTRAINT fk_session_admin FOREIGN KEY (admin_id) REFERENCES admin(aid) ON DELETE CASCADE,
     CONSTRAINT fk_session_evaluator FOREIGN KEY (evaluator_id) REFERENCES evaluators(evaluator_id) ON DELETE CASCADE
+);
+
+-- ============================================
+-- Email Settings Table
+-- ============================================
+
+CREATE TABLE email_settings (
+    id TINYINT NOT NULL DEFAULT 1 PRIMARY KEY,
+    enabled TINYINT(1) NOT NULL DEFAULT 0,
+    smtp_host VARCHAR(255) NOT NULL DEFAULT 'smtp.gmail.com',
+    smtp_port INT NOT NULL DEFAULT 587,
+    smtp_secure TINYINT(1) NOT NULL DEFAULT 0,
+    smtp_user VARCHAR(255) DEFAULT NULL,
+    smtp_pass_encrypted TEXT DEFAULT NULL,
+    from_email VARCHAR(255) DEFAULT NULL,
+    from_name VARCHAR(255) DEFAULT NULL,
+    updated_by INT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_email_settings_single_row CHECK (id = 1),
+    CONSTRAINT fk_email_settings_admin
+        FOREIGN KEY (updated_by) REFERENCES admin(aid)
+        ON DELETE SET NULL
 );
 
