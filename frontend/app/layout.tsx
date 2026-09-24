@@ -39,8 +39,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="overflow-x-hidden">
-      <body className={`font-sans antialiased overflow-x-hidden`}>
+    <html lang="en" className="overflow-x-clip">
+      <body className={`font-sans antialiased overflow-x-clip`}>
         <BootSplashLayer />
         <BootSplashClient />
         <I18nProvider>{children}</I18nProvider>

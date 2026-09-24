@@ -6,7 +6,27 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { CheckCircle2, Upload, ArrowRight, ArrowLeft, Loader2, Info, BookOpen } from "lucide-react"
+import { 
+  CheckCircle2, 
+  Upload, 
+  ArrowRight, 
+  ArrowLeft, 
+  Loader2, 
+  Info, 
+  BookOpen, 
+  User, 
+  Mail, 
+  Phone, 
+  Calendar, 
+  MapPin, 
+  GraduationCap, 
+  Briefcase, 
+  Hash, 
+  FileText,
+  Building,
+  Sparkles,
+  Award
+} from "lucide-react"
 import { useTranslation } from "@/lib/i18n-context"
 import { apiClient } from "@/lib/api-client"
 import { useAuth, type AuthUser } from "@/hooks/use-auth"
@@ -46,7 +66,42 @@ const MAX_FILE_SIZE_LABEL = "200KB"
 const formatFileSizeKB = (size: number) => `${(size / 1024).toFixed(1)}KB`
 const isInputField = (field: CommonField | PrizeSpecificField) => field.field_type !== 'label'
 
-export function ApplicationWizard({ prizeId }: { prizeId: string }) {
+const getFieldIcon = (fieldName: string, fieldType: FieldType) => {
+  const name = fieldName.toLowerCase()
+  if (fieldType === 'date' || name.includes('date') || name.includes('dob') || name.includes('birth') || name.includes('(ad)') || name.includes('(bs)')) {
+    return <Calendar className="h-4 w-4" />
+  }
+  if (name.includes('mail')) {
+    return <Mail className="h-4 w-4" />
+  }
+  if (name.includes('phone') || name.includes('mobile') || name.includes('contact')) {
+    return <Phone className="h-4 w-4" />
+  }
+  if (name.includes('name') || name.includes('father') || name.includes('mother') || name.includes('applicant') || name.includes('sex') || name.includes('gender')) {
+    return <User className="h-4 w-4" />
+  }
+  if (name.includes('address') || name.includes('district') || name.includes('city') || name.includes('province') || name.includes('location')) {
+    return <MapPin className="h-4 w-4" />
+  }
+  if (name.includes('education') || name.includes('qualification') || name.includes('degree') || name.includes('subject') || name.includes('school') || name.includes('college') || name.includes('university')) {
+    return <GraduationCap className="h-4 w-4" />
+  }
+  if (name.includes('work') || name.includes('experience') || name.includes('position') || name.includes('designation') || name.includes('occupation') || name.includes('contribution')) {
+    return <Briefcase className="h-4 w-4" />
+  }
+  if (name.includes('office') || name.includes('institution') || name.includes('company') || name.includes('organization')) {
+    return <Building className="h-4 w-4" />
+  }
+  if (fieldType === 'number' || name.includes('age') || name.includes('citizenship') || name.includes('number') || name.includes('no.')) {
+    return <Hash className="h-4 w-4" />
+  }
+  if (fieldType === 'file') {
+    return <Upload className="h-4 w-4" />
+  }
+  return <FileText className="h-4 w-4" />
+}
+
+export function ApplicationWizard({ prizeId, prize }: { prizeId: string; prize?: any }) {
   const [step, setStep] = useState(1)
   const { t } = useTranslation()
   const { user, token, isChecking, isAuthenticated } = useAuth({ requireAuth: true })
@@ -67,6 +122,29 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
   const commonFieldsStep = 1
   const prizeSpecificStep = prizeSpecificFields.length > 0 ? 2 : null
   const reviewStep = totalSteps
+
+  // Live completion calculations
+  const requiredCommon = commonFields.filter(f => (f.is_required === true || f.is_required === 1) && f.field_type !== 'label')
+  const filledCommon = requiredCommon.filter(f => {
+    const k = `common_${f.common_field_id}`
+    return f.field_type === 'file' ? !!fileUploads[k] : !!fieldValues[k]?.value?.trim()
+  })
+  
+  const requiredSpecific = prizeSpecificFields.filter(f => (f.is_required === true || f.is_required === 1) && f.field_type !== 'label')
+  const filledSpecific = requiredSpecific.filter(f => {
+    const k = `specific_${f.prize_specific_field_id}`
+    return f.field_type === 'file' ? !!fileUploads[k] : !!fieldValues[k]?.value?.trim()
+  })
+
+  const totalRequired = requiredCommon.length + requiredSpecific.length
+  const totalFilled = filledCommon.length + filledSpecific.length
+  const completionPercentage = totalRequired === 0 ? 100 : Math.min(100, Math.round((totalFilled / totalRequired) * 100))
+
+  const isStep1Ready = requiredCommon.length === 0 || filledCommon.length === requiredCommon.length
+  const step1Remaining = requiredCommon.length - filledCommon.length
+
+  const isStep2Ready = requiredSpecific.length === 0 || filledSpecific.length === requiredSpecific.length
+  const step2Remaining = requiredSpecific.length - filledSpecific.length
 
   // Fetch fields for the prize
   useEffect(() => {
@@ -488,84 +566,131 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
     const fieldValue = fieldValues[fieldId]
     const file = fileUploads[fieldId]
     const value = fieldValue?.value || ''
+    const isRequired = field.is_required === true || field.is_required === 1
+    const fieldIcon = getFieldIcon(field.field_name, field.field_type)
 
     switch (field.field_type) {
       case 'label':
         return (
-          <div key={fieldId} className="md:col-span-2 pt-4">
-            <h3 className="border-b pb-2 text-lg font-semibold text-foreground">
-              {field.field_name}
-            </h3>
+          <div key={fieldId} className="md:col-span-2 pt-6 pb-2">
+            <div className="flex items-center gap-2.5 border-b pb-2.5">
+              <span className="w-1.5 h-4 bg-primary rounded-full inline-block"></span>
+              <h3 className="text-base font-bold tracking-tight text-foreground">
+                {field.field_name}
+              </h3>
+            </div>
           </div>
         )
 
       case 'text':
         return (
-          <div key={fieldId} className="space-y-2">
-            <Label>
-              {field.field_name} {field.is_required && <span className="text-red-500">*</span>}
+          <div key={fieldId} className="space-y-1.5 group">
+            <Label className="text-sm font-semibold text-foreground/85 flex items-center gap-1.5">
+              <span className="text-muted-foreground/70 group-focus-within:text-primary transition-colors">
+                {fieldIcon}
+              </span>
+              <span>{field.field_name}</span>
+              {isRequired && <span className="text-rose-500 font-bold ml-0.5">*</span>}
             </Label>
-            <Input
-              type="text"
-              value={value}
-              onChange={(e) => handleFieldChange(fieldId, e.target.value, isCommon)}
-              required={field.is_required === true || field.is_required === 1}
-            />
+            <div className="relative rounded-xl transition-all">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/60 group-focus-within:text-primary transition-colors">
+                {fieldIcon}
+              </div>
+              <Input
+                type="text"
+                value={value}
+                onChange={(e) => handleFieldChange(fieldId, e.target.value, isCommon)}
+                required={isRequired}
+                className="pl-10 h-11 rounded-xl bg-background border-border/80 hover:border-primary/40 focus:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 transition-all text-sm shadow-2xs"
+                placeholder={`Enter ${field.field_name.toLowerCase()}`}
+              />
+            </div>
           </div>
         )
       
       case 'textarea':
         return (
-          <div key={fieldId} className="space-y-2">
-            <Label>
-              {field.field_name} {field.is_required && <span className="text-red-500">*</span>}
+          <div key={fieldId} className="space-y-1.5 md:col-span-2 group">
+            <Label className="text-sm font-semibold text-foreground/85 flex items-center gap-1.5">
+              <span className="text-muted-foreground/70 group-focus-within:text-primary transition-colors">
+                {fieldIcon}
+              </span>
+              <span>{field.field_name}</span>
+              {isRequired && <span className="text-rose-500 font-bold ml-0.5">*</span>}
             </Label>
             <Textarea
               value={value}
               onChange={(e) => handleFieldChange(fieldId, e.target.value, isCommon)}
-              required={field.is_required === true || field.is_required === 1}
-              className="min-h-[100px]"
+              required={isRequired}
+              className="min-h-[110px] resize-y rounded-xl p-3.5 bg-background border-border/80 hover:border-primary/40 focus:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 transition-all text-sm shadow-2xs"
+              placeholder={`Enter ${field.field_name.toLowerCase()}`}
             />
           </div>
         )
       
       case 'number':
         return (
-          <div key={fieldId} className="space-y-2">
-            <Label>
-              {field.field_name} {field.is_required && <span className="text-red-500">*</span>}
+          <div key={fieldId} className="space-y-1.5 group">
+            <Label className="text-sm font-semibold text-foreground/85 flex items-center gap-1.5">
+              <span className="text-muted-foreground/70 group-focus-within:text-primary transition-colors">
+                {fieldIcon}
+              </span>
+              <span>{field.field_name}</span>
+              {isRequired && <span className="text-rose-500 font-bold ml-0.5">*</span>}
             </Label>
-            <Input
-              type="number"
-              value={value}
-              onChange={(e) => handleFieldChange(fieldId, e.target.value, isCommon)}
-              required={field.is_required === true || field.is_required === 1}
-            />
+            <div className="relative rounded-xl transition-all">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/60 group-focus-within:text-primary transition-colors">
+                {fieldIcon}
+              </div>
+              <Input
+                type="number"
+                value={value}
+                onChange={(e) => handleFieldChange(fieldId, e.target.value, isCommon)}
+                required={isRequired}
+                className="pl-10 h-11 rounded-xl bg-background border-border/80 hover:border-primary/40 focus:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 transition-all text-sm shadow-2xs"
+                placeholder={`Enter ${field.field_name.toLowerCase()}`}
+              />
+            </div>
           </div>
         )
       
       case 'date':
         return (
-          <div key={fieldId} className="space-y-2">
-            <Label>
-              {field.field_name} {field.is_required && <span className="text-red-500">*</span>}
+          <div key={fieldId} className="space-y-1.5 group">
+            <Label className="text-sm font-semibold text-foreground/85 flex items-center gap-1.5">
+              <span className="text-muted-foreground/70 group-focus-within:text-primary transition-colors">
+                <Calendar className="h-4 w-4" />
+              </span>
+              <span>{field.field_name}</span>
+              {isRequired && <span className="text-rose-500 font-bold ml-0.5">*</span>}
             </Label>
-            <Input
-              type="date"
-              value={value}
-              onChange={(e) => handleFieldChange(fieldId, e.target.value, isCommon)}
-              required={field.is_required === true || field.is_required === 1}
-            />
+            <div className="relative rounded-xl transition-all">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/60 group-focus-within:text-primary transition-colors">
+                <Calendar className="h-4 w-4" />
+              </div>
+              <Input
+                type="date"
+                value={value}
+                onChange={(e) => handleFieldChange(fieldId, e.target.value, isCommon)}
+                required={isRequired}
+                className="pl-10 h-11 rounded-xl bg-background border-border/80 hover:border-primary/40 focus:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 transition-all text-sm shadow-2xs"
+              />
+            </div>
           </div>
         )
       
       case 'file':
+        const isPhoto = field.field_name.toLowerCase().includes('photo') || field.field_name.toLowerCase().includes('picture') || field.field_name.toLowerCase().includes('image')
         return (
-          <div key={fieldId} className="space-y-2">
-            <Label>
-              {field.field_name} {field.is_required && <span className="text-red-500">*</span>}
+          <div key={fieldId} className="space-y-1.5 group">
+            <Label className="text-sm font-semibold text-foreground/85 flex items-center gap-1.5">
+              <span className="text-muted-foreground/70 group-focus-within:text-primary transition-colors">
+                <Upload className="h-4 w-4" />
+              </span>
+              <span>{field.field_name}</span>
+              {isRequired && <span className="text-rose-500 font-bold ml-0.5">*</span>}
             </Label>
-            <div className="border-2 border-dashed rounded-lg p-4 text-center">
+            <div className="relative">
               <input
                 type="file"
                 id={fieldId}
@@ -576,16 +701,40 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
                 onChange={(e) => handleFileChange(fieldId, e.target.files?.[0] || null, e.currentTarget)}
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
               />
-              <label htmlFor={fieldId} className="cursor-pointer">
-                <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                {file ? (
-                  <p className="text-sm font-medium">{file.name}</p>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium">Click to upload</p>
-                    <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, JPG, PNG (Max {MAX_FILE_SIZE_LABEL} per file)</p>
-                  </>
-                )}
+              <label 
+                htmlFor={fieldId} 
+                className={`cursor-pointer flex items-center gap-3.5 px-4 py-3.5 min-h-[74px] rounded-xl border-2 transition-all duration-200 ${
+                  file 
+                    ? 'border-emerald-500/60 bg-emerald-50/50 dark:bg-emerald-950/20 hover:border-emerald-600 shadow-2xs' 
+                    : 'border-dashed border-border/90 hover:border-primary/60 bg-muted/10 hover:bg-muted/25 shadow-2xs'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                  file ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-primary/10 text-primary group-hover:bg-primary/15'
+                }`}>
+                  {file ? <CheckCircle2 className="h-5 w-5" /> : <Upload className="h-5 w-5" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  {file ? (
+                    <>
+                      <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 truncate">
+                        {file.name}
+                      </p>
+                      <p className="text-[11px] text-emerald-600/90 dark:text-emerald-400 mt-0.5 font-medium">
+                        {(file.size / 1024).toFixed(1)} KB &bull; Selected
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                        {isPhoto ? "Upload Photo" : "Upload Document"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        PDF, DOC, DOCX, JPG, PNG (Max {MAX_FILE_SIZE_LABEL})
+                      </p>
+                    </>
+                  )}
+                </div>
               </label>
             </div>
           </div>
@@ -598,213 +747,362 @@ export function ApplicationWizard({ prizeId }: { prizeId: string }) {
 
   if (loadingFields) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading application form...</span>
+      <div className="flex flex-col items-center justify-center py-24 space-y-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="text-sm font-medium text-muted-foreground">Loading application form...</span>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Stepper with Guidelines Link */}
-      <div className="flex items-center justify-between px-4">
-        <div className="flex items-center justify-between flex-1">
-          <div className="flex items-center gap-4 flex-1">
-            {[1, 2, 3].slice(0, totalSteps).map((i) => (
-              <div key={i} className="flex flex-col items-center gap-2">
-                <div
-                  className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors
-                  ${step >= i ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
-                >
-                  {step > i ? <CheckCircle2 className="h-5 w-5" /> : i}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* Left Column: Form & Stepper (Col 8) */}
+      <div className="lg:col-span-8 space-y-6">
+        {/* Stepper with Guidelines Link */}
+        <div className="bg-card border rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {[1, 2, 3].slice(0, totalSteps).map((i, idx) => {
+              const isCompleted = step > i
+              const isCurrent = step === i
+              return (
+                <div key={i} className="flex items-center gap-3 flex-1 sm:flex-initial">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all shadow-sm
+                      ${isCurrent ? "bg-primary text-primary-foreground ring-4 ring-primary/15 scale-105" : isCompleted ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : i}
+                    </div>
+                    <div className="hidden sm:block">
+                      <p className={`text-[11px] font-bold uppercase tracking-wider ${isCurrent ? 'text-primary' : 'text-muted-foreground'}`}>
+                        Step {i}
+                      </p>
+                      <p className="text-xs font-semibold text-foreground">
+                        {i === commonFieldsStep && "Common Info"}
+                        {i === prizeSpecificStep && "Award Specific"}
+                        {i === reviewStep && "Review & Submit"}
+                      </p>
+                    </div>
+                  </div>
+                  {idx < totalSteps - 1 && (
+                    <div className={`hidden sm:block h-[2px] w-8 md:w-12 rounded-full transition-colors ${step > i ? 'bg-emerald-600' : 'bg-border'}`} />
+                  )}
                 </div>
-                <span className="text-xs text-muted-foreground hidden sm:block">
-                  {i === commonFieldsStep && "Common Information"}
-                  {i === prizeSpecificStep && "Prize Specific"}
-                  {i === reviewStep && "Review"}
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
+
           <Link
             href={`/prizes/${prizeId}/apply/guidelines`}
-            className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 border border-primary/20 transition-all ml-auto"
           >
-            <BookOpen className="h-4 w-4" />
-            <span>Guidelines</span>
+            <BookOpen className="h-3.5 w-3.5" />
+            <span>View Guidelines</span>
           </Link>
         </div>
-      </div>
 
-      {/* File Size Limit Alert */}
-      <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <AlertTitle className="text-blue-900 dark:text-blue-100 font-semibold">
-          File Upload Limit
-        </AlertTitle>
-        <AlertDescription className="text-blue-800 dark:text-blue-200">
-          <div className="mt-1 space-y-1">
-            <p>
-              <strong>Each uploaded file must be {MAX_FILE_SIZE_LABEL} or less.</strong>
-            </p>
-            <p className="text-sm mt-1">
-              Files larger than {MAX_FILE_SIZE_LABEL} cannot be submitted.
-            </p>
+        {/* File Size Limit Banner */}
+        <div className="relative overflow-hidden rounded-2xl border border-blue-200/80 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-blue-50/80 p-4 shadow-sm dark:border-blue-900/60 dark:from-blue-950/30 dark:to-indigo-950/20">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+              <Info className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-semibold text-blue-950 dark:text-blue-200">
+                File Upload Guidelines
+              </h4>
+              <p className="text-xs text-blue-800/90 dark:text-blue-300">
+                Each document or attachment must be under <strong className="font-semibold text-blue-950 dark:text-white">{MAX_FILE_SIZE_LABEL}</strong>. Supported formats: PDF, DOC, DOCX, JPG, PNG.
+              </p>
+            </div>
           </div>
-        </AlertDescription>
-      </Alert>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {step === commonFieldsStep && "Common Information (Required for All Prizes)"}
-            {step === prizeSpecificStep && "Prize Specific Information"}
-            {step === reviewStep && "Review & Submit"}
-          </CardTitle>
-          {step === commonFieldsStep && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Please fill in all common fields. These fields are required for all prize applications.
+        <Card className="rounded-2xl border shadow-sm overflow-hidden bg-card">
+          <CardHeader className="bg-muted/15 border-b p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
+                Step {step} of {totalSteps}
+              </span>
+            </div>
+            <CardTitle className="text-xl font-bold tracking-tight text-foreground">
+              {step === commonFieldsStep && "Common Information"}
+              {step === prizeSpecificStep && "Prize Specific Information"}
+              {step === reviewStep && "Review & Submit"}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {step === commonFieldsStep && "Please fill in your personal and general details for this application."}
+              {step === prizeSpecificStep && "Please provide the specialized details and attachments for this award."}
+              {step === reviewStep && "Please carefully review all entered details before final submission."}
             </p>
-          )}
-          {step === prizeSpecificStep && prizeSpecificStep && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Please fill in the prize-specific fields for this award.
-            </p>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-4 min-h-[300px]">
-          {step === commonFieldsStep && (
-            <>
-              {commonFields.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No common fields available.</p>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {commonFields.map(field => renderField(field, true))}
-                </div>
-              )}
-            </>
-          )}
+          </CardHeader>
+          <CardContent className="p-6 space-y-6 min-h-[300px]">
+            {step === commonFieldsStep && (
+              <>
+                {commonFields.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No common fields available.</p>
+                ) : (
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {commonFields.map(field => renderField(field, true))}
+                  </div>
+                )}
+              </>
+            )}
 
-          {step === prizeSpecificStep && prizeSpecificStep && (
-            <>
-              {prizeSpecificFields.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No prize-specific fields for this award. Click Next to review your application.
-                </p>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {prizeSpecificFields.map(field => renderField(field, false))}
-                </div>
-              )}
-            </>
-          )}
+            {step === prizeSpecificStep && prizeSpecificStep && (
+              <>
+                {prizeSpecificFields.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    No prize-specific fields for this award. Click Next to review your application.
+                  </p>
+                ) : (
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {prizeSpecificFields.map(field => renderField(field, false))}
+                  </div>
+                )}
+              </>
+            )}
 
-          {step === reviewStep && (
-            <div className="space-y-4">
-              <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold">Application Summary</h3>
-                  {Object.keys(fileUploads).length > 0 && (
-                    <div className="text-sm text-muted-foreground">
-                      File limit: {MAX_FILE_SIZE_LABEL} each
+            {step === reviewStep && (
+              <div className="space-y-5">
+                <div className="bg-muted/40 border rounded-xl p-5 space-y-4">
+                  <div className="flex justify-between items-center border-b pb-3">
+                    <h3 className="font-semibold text-base">Application Summary</h3>
+                    {Object.keys(fileUploads).length > 0 && (
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                        {Object.keys(fileUploads).length} file(s) attached
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Common Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-background/60 p-4 rounded-lg border">
+                      {commonFields.filter(isInputField).map(field => {
+                        const key = `common_${field.common_field_id}`
+                        const value = fieldValues[key]
+                        return (
+                          <div key={key} className="space-y-0.5 text-sm">
+                            <p className="text-xs text-muted-foreground font-medium">{field.field_name}</p>
+                            <p className="font-medium text-foreground">
+                              {field.field_type === 'file' 
+                                ? (fileUploads[key]?.name || "Not uploaded")
+                                : (value?.value || "-")}
+                            </p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {prizeSpecificFields.length > 0 && (
+                    <div className="space-y-3 mt-4">
+                      <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Prize Specific Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-background/60 p-4 rounded-lg border">
+                        {prizeSpecificFields.filter(isInputField).map(field => {
+                          const key = `specific_${field.prize_specific_field_id}`
+                          const value = fieldValues[key]
+                          return (
+                            <div key={key} className="space-y-0.5 text-sm">
+                              <p className="text-xs text-muted-foreground font-medium">{field.field_name}</p>
+                              <p className="font-medium text-foreground">
+                                {field.field_type === 'file' 
+                                  ? (fileUploads[key]?.name || "Not uploaded")
+                                  : (value?.value || "-")}
+                              </p>
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
                 
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Common Information:</h4>
-                  {commonFields.filter(isInputField).map(field => {
-                    const key = `common_${field.common_field_id}`
-                    const value = fieldValues[key]
-                    return (
-                      <div key={key} className="grid grid-cols-2 gap-2 text-sm">
-                        <span className="text-muted-foreground">{field.field_name}:</span>
-                        <span>
-                          {field.field_type === 'file' 
-                            ? (fileUploads[key]?.name || "Not uploaded")
-                            : (value?.value || "-")}
-                        </span>
-                      </div>
-                    )
-                  })}
+                <div className="flex items-center gap-3 p-3 bg-muted/20 border rounded-xl">
+                  <Checkbox 
+                    id="terms" 
+                    checked={isDeclarationChecked}
+                    onCheckedChange={(checked) => {
+                      setIsDeclarationChecked(checked === true)
+                    }}
+                  />
+                  <Label 
+                    htmlFor="terms" 
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    I declare that all information provided in this application is accurate and true.
+                  </Label>
                 </div>
-
-                {prizeSpecificFields.length > 0 && (
-                  <div className="space-y-2 mt-4">
-                    <h4 className="font-medium text-sm">Prize Specific Information:</h4>
-                    {prizeSpecificFields.filter(isInputField).map(field => {
-                      const key = `specific_${field.prize_specific_field_id}`
-                      const value = fieldValues[key]
-                      return (
-                        <div key={key} className="grid grid-cols-2 gap-2 text-sm">
-                          <span className="text-muted-foreground">{field.field_name}:</span>
-                          <span>
-                            {field.field_type === 'file' 
-                              ? (fileUploads[key]?.name || "Not uploaded")
-                              : (value?.value || "-")}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="terms" 
-                  checked={isDeclarationChecked}
-                  onCheckedChange={(checked) => {
-                    setIsDeclarationChecked(checked === true)
-                  }}
-                />
-                <Label 
-                  htmlFor="terms" 
-                  className="text-sm cursor-pointer"
-                  onClick={() => {
-                    setIsDeclarationChecked(!isDeclarationChecked)
-                  }}
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-between border-t bg-muted/10 p-5">
+            <div className="flex gap-2.5 ml-auto">
+              {step > 1 && (
+                <Button variant="outline" onClick={handleBack} className="rounded-lg shadow-sm">
+                  <ArrowLeft className="mr-2 h-4 w-4" /> {t("action.back")}
+                </Button>
+              )}
+              {step < totalSteps ? (
+                <Button onClick={handleNext} className="rounded-lg shadow-sm">
+                  {t("action.next")} <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button 
+                  onClick={(e) => {
+                    handleSubmit(e)
+                  }} 
+                  disabled={isLoading || !isDeclarationChecked}
+                  type="button"
+                  className="cursor-pointer rounded-lg shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  I declare that all information provided is accurate and true.
-                </Label>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t("action.submitting")}
+                    </>
+                  ) : (
+                    t("action.submit")
+                  )}
+                </Button>
+              )}
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
+
+      {/* Right Column: Live Tracker & Sidebar Information (Col 4) */}
+      <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-24 self-start">
+        {/* Live Form Completion Tracker */}
+        <Card className="rounded-2xl border shadow-sm bg-card overflow-hidden">
+          <CardHeader className="bg-muted/15 border-b p-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Live Form Progress
+              </CardTitle>
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${completionPercentage === 100 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'}`}>
+                {completionPercentage}%
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            {/* Animated Progress Bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Fields Completed</span>
+                <span className="font-semibold text-foreground">{totalFilled} of {totalRequired}</span>
+              </div>
+              <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden p-0.5">
+                <div 
+                  className="h-full bg-gradient-to-r from-primary to-emerald-500 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${completionPercentage}%` }}
+                />
               </div>
             </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-between border-t pt-6">
-          <div className="flex gap-2 ml-auto">
-            {step > 1 && (
-              <Button variant="outline" onClick={handleBack}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> {t("action.back")}
-              </Button>
-            )}
-            {step < totalSteps ? (
-              <Button onClick={handleNext}>
-                {t("action.next")} <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button 
-                onClick={(e) => {
-                  handleSubmit(e)
-                }} 
-                disabled={isLoading || !isDeclarationChecked}
-                type="button"
-                className="cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("action.submitting")}
-                  </>
-                ) : (
-                  t("action.submit")
-                )}
-              </Button>
-            )}
+
+            {/* Step-by-Step Readiness Status */}
+            <div className="space-y-2 pt-2 border-t text-xs">
+              <div className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${step === 1 ? 'border-primary/40 bg-primary/5' : 'border-border/50 bg-muted/20'}`}>
+                <div className="flex items-center gap-2">
+                  {isStep1Ready ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
+                      1
+                    </div>
+                  )}
+                  <span className="font-medium text-foreground">Common Information</span>
+                </div>
+                <span className={`text-[11px] font-semibold ${isStep1Ready ? 'text-emerald-600' : 'text-amber-600 dark:text-amber-400'}`}>
+                  {isStep1Ready ? "Ready" : `${step1Remaining} fields remaining`}
+                </span>
+              </div>
+
+              {prizeSpecificFields.length > 0 && (
+                <div className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${step === 2 ? 'border-primary/40 bg-primary/5' : 'border-border/50 bg-muted/20'}`}>
+                  <div className="flex items-center gap-2">
+                    {isStep2Ready ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40 flex items-center justify-center text-[9px] font-bold text-muted-foreground shrink-0">
+                        2
+                      </div>
+                    )}
+                    <span className="font-medium text-foreground">Award Specifics</span>
+                  </div>
+                  <span className={`text-[11px] font-semibold ${isStep2Ready ? 'text-emerald-600' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {isStep2Ready ? "Ready" : `${step2Remaining} fields remaining`}
+                  </span>
+                </div>
+              )}
+
+              <div className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${step === reviewStep ? 'border-primary/40 bg-primary/5' : 'border-border/50 bg-muted/20'}`}>
+                <div className="flex items-center gap-2">
+                  {isDeclarationChecked ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40 flex items-center justify-center text-[9px] font-bold text-muted-foreground shrink-0">
+                      ✓
+                    </div>
+                  )}
+                  <span className="font-medium text-foreground">Declaration & Submit</span>
+                </div>
+                <span className={`text-[11px] font-semibold ${isDeclarationChecked ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                  {isDeclarationChecked ? "Confirmed" : "Pending"}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Award Details Card */}
+        {prize && (
+          <Card className="rounded-2xl border shadow-sm bg-card overflow-hidden">
+            <CardHeader className="bg-muted/15 border-b p-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Award className="h-4 w-4 text-primary" />
+                Award Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3 text-xs">
+              <div>
+                <span className="text-muted-foreground font-medium">Nomination Title</span>
+                <p className="font-semibold text-foreground text-sm mt-0.5">{prize.title}</p>
+              </div>
+              {prize.open_date && prize.close_date && (
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                  <div>
+                    <span className="text-muted-foreground">Opened</span>
+                    <p className="font-medium mt-0.5">{new Date(prize.open_date).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Deadline</span>
+                    <p className="font-medium text-rose-600 dark:text-rose-400 mt-0.5">
+                      {new Date(prize.close_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Help & Support Card */}
+        <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-2 text-xs">
+          <div className="flex items-center gap-2 font-semibold text-foreground">
+            <BookOpen className="h-4 w-4 text-primary" />
+            <span>Need Help?</span>
           </div>
-        </CardFooter>
-      </Card>
+          <p className="text-muted-foreground leading-relaxed">
+            Review the official{" "}
+            <Link href={`/prizes/${prizeId}/apply/guidelines`} className="text-primary font-medium underline underline-offset-2">
+              Award Guidelines
+            </Link>{" "}
+            for full details on document formats and submission rules.
+          </p>
+        </div>
+      </div>
 
       {/* Success Dialog */}
       <Dialog 

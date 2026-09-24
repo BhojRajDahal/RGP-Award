@@ -843,6 +843,7 @@ export default function AdminPrizesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-16">S.N.</TableHead>
                     <TableHead>Field Name</TableHead>
                     <TableHead>Field Type</TableHead>
                     <TableHead>Required</TableHead>
@@ -850,8 +851,9 @@ export default function AdminPrizesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {prizeFields.map((f) => (
+                  {prizeFields.map((f, index) => (
                     <TableRow key={f.prize_specific_field_id}>
+                      <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="font-medium">{f.field_name}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{f.field_type}</Badge>

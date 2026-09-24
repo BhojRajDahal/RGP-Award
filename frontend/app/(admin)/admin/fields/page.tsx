@@ -402,7 +402,7 @@ export default function CommonFieldsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
+                  <TableHead className="w-16">S.N.</TableHead>
                   <TableHead>Field Name</TableHead>
                   <TableHead>Field Type</TableHead>
                   <TableHead>Required</TableHead>
@@ -411,9 +411,9 @@ export default function CommonFieldsPage() {
               </TableHeader>
 
               <TableBody>
-                {filteredFields.map((f) => (
+                {filteredFields.map((f, index) => (
                   <TableRow key={f.common_field_id}>
-                    <TableCell>{f.common_field_id}</TableCell>
+                    <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="font-medium">{f.field_name}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{f.field_type}</Badge>
