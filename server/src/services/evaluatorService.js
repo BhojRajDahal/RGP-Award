@@ -2,14 +2,15 @@ import bcrypt from 'bcrypt';
 import { createEvaluator, findByEmail } from '../model/evaluatorModel.js';
 
 export const registerEvaluatorService = async (full_name, email, institution, designation, password) => {
-    const existingEvaluators = await findByEmail(email);
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const existingEvaluators = await findByEmail(normalizedEmail);
 
     if (existingEvaluators.length > 0) {
         throw new Error('Email already exists');
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    await createEvaluator(full_name, email, institution, designation, hashed);
+    await createEvaluator(full_name.trim(), normalizedEmail, institution.trim(), designation.trim(), hashed);
 
     return 'Evaluator registered successfully';
 };

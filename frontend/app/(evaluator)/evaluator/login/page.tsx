@@ -37,7 +37,7 @@ export default function EvaluatorLoginPage() {
 
     try {
       const response = await apiClient.post("/api/evaluator/login", {
-        email: formValues.email,
+        email: formValues.email.trim(),
         password: formValues.password,
       })
 

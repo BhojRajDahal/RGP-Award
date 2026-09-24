@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import { useTranslation } from "@/lib/i18n-context"
 import { apiClient } from "@/lib/api-client"
 import { itemsFromPagedApiResponse } from "@/lib/paged-api-response"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -176,16 +177,16 @@ export default function AdminApplicationsPage() {
       console.warn('[getFileUrl] Empty file path')
       return "#"
     }
-    
+
     // Remove 'public/' prefix if present
     const cleanPath = filePath.replace(/^public\//, '')
-    
+
     // Determine base URL
     // If NEXT_PUBLIC_API_BASE_URL is set and is a full URL, use it directly
     // Otherwise, use relative path which will be proxied by Next.js rewrites
     const rawBase = process.env.NEXT_PUBLIC_API_BASE_URL
     let fullUrl: string
-    
+
     if (rawBase && rawBase.includes('http')) {
       // Direct backend URL (e.g., http://localhost:5000)
       fullUrl = `${rawBase}/api/files/${cleanPath}`
@@ -193,14 +194,14 @@ export default function AdminApplicationsPage() {
       // Relative path - Next.js will proxy /api/* to backend
       fullUrl = `/api/files/${cleanPath}`
     }
-    
+
     console.log('[getFileUrl]', {
       original: filePath,
       cleaned: cleanPath,
       fullUrl: fullUrl,
       baseUrl: rawBase || 'relative (proxied)'
     })
-    
+
     return fullUrl
   }
 
@@ -395,7 +396,7 @@ export default function AdminApplicationsPage() {
     const validMarks = inputs
       .map((input) => parseFloat(input))
       .filter((mark) => !isNaN(mark) && mark >= 0 && mark <= 100)
-    
+
     if (validMarks.length > 0) {
       const sum = validMarks.reduce((acc, mark) => acc + mark, 0)
       const avg = sum / validMarks.length
@@ -410,7 +411,7 @@ export default function AdminApplicationsPage() {
       toast.error("Please enter at least one valid mark")
       return
     }
-    
+
     const avgValue = parseFloat(averageMarks)
     if (isNaN(avgValue) || avgValue < 0 || avgValue > 100) {
       toast.error("Average marks must be between 0 and 100")
@@ -444,18 +445,18 @@ export default function AdminApplicationsPage() {
 
       // Close confirmation dialog first
       setMarksConfirmDialog({ open: false, averageMarks: "" })
-      
+
       // Mark this application as having marks assigned
       if (assignMarksDialog.applicationId) {
         setApplicationsWithMarks((prev) => new Set(prev).add(assignMarksDialog.applicationId!))
       }
-      
+
       // Close assign marks dialog and reset form
       setAssignMarksDialog({ open: false, applicationId: null })
       setMarkInputs(["", ""])
       setAverageMarks("")
       setRemarks("")
-      
+
       // Show success popup dialog
       setMarksSuccessDialog({ open: true })
     } catch (error: any) {
@@ -513,13 +514,13 @@ export default function AdminApplicationsPage() {
         } else {
           toast.success(response.data.msg || "Application rejected and email sent successfully")
         }
-        
+
         setEmailDialog({ open: false, applicationId: null, userEmail: null })
         setEmailMessage("")
       } catch (emailError: any) {
         // Email failed but status was already updated
         const errorMsg = emailError.response?.data?.msg || emailError.message || "Failed to send email"
-        
+
         if (errorMsg.includes("authentication") || errorMsg.includes("BadCredentials") || errorMsg.includes("App Password") || errorMsg.includes("Username and Password not accepted")) {
           toast.warning(
             "Application rejected successfully, but email could not be sent. Please configure Gmail App Password in server .env file. See server console for setup instructions.",
@@ -528,7 +529,7 @@ export default function AdminApplicationsPage() {
         } else {
           toast.warning(`Application rejected successfully, but email could not be sent: ${errorMsg}`, { duration: 8000 })
         }
-        
+
         setEmailDialog({ open: false, applicationId: null, userEmail: null })
         setEmailMessage("")
       }
@@ -544,7 +545,7 @@ export default function AdminApplicationsPage() {
     setApplicantProfile(app)
     setIsProfileOpen(true)
     setIsProfileLoading(true)
-    
+
     // Get user_id from the application (we stored it when fetching applications)
     let user_id = app.user_id
 
@@ -714,7 +715,7 @@ export default function AdminApplicationsPage() {
                     <TableRow key={app.id}>
                       <TableCell className="font-medium">{app.id}</TableCell>
                       <TableCell>
-                        <div 
+                        <div
                           className="font-medium cursor-pointer hover:text-primary hover:underline"
                           onClick={() => handleViewApplicant(app)}
                         >
@@ -833,7 +834,7 @@ export default function AdminApplicationsPage() {
 
       {/* Applicant Profile Dialog - Improved Layout */}
       <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
-        <DialogContent className="max-w-[90vw] w-full sm:max-w-5xl lg:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className="max-w-[96vw] w-[96vw] sm:max-w-6xl lg:max-w-7xl xl:max-w-[1600px] max-h-[92vh] overflow-hidden flex flex-col p-0">
           {/* Custom Scrollable Content Area with styled scrollbar */}
           <div className="overflow-y-auto overflow-x-hidden px-6 sm:px-8 lg:px-10 py-6 sm:py-8 custom-scrollbar flex-1 min-h-0">
             <DialogHeader className="mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-border/40">
@@ -854,45 +855,45 @@ export default function AdminApplicationsPage() {
               <div className="space-y-8 sm:space-y-10 pt-4 sm:pt-6 pb-6 sm:pb-8 w-full">
                 {/* Profile Header Section */}
                 {(() => {
-                // Extract profile picture from all applications
-                let profilePicture: string | null = null
-                if (userProfileData.applications && userProfileData.applications.length > 0) {
-                  for (const app of userProfileData.applications) {
-                    // Check common fields
-                    if (app.common_field_values) {
-                      for (const field of app.common_field_values) {
-                        if (field.file_path) {
-                          const fieldName = (field.field_name || '').toLowerCase()
-                          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
-                          if (isImage && (fieldName.includes('photo') || fieldName.includes('picture') || fieldName.includes('profile') || fieldName.includes('image') || fieldName.includes('avatar'))) {
-                            profilePicture = field.file_path
-                            console.log('[Profile] Found profile picture:', profilePicture)
-                            break
+                  // Extract profile picture from all applications
+                  let profilePicture: string | null = null
+                  if (userProfileData.applications && userProfileData.applications.length > 0) {
+                    for (const app of userProfileData.applications) {
+                      // Check common fields
+                      if (app.common_field_values) {
+                        for (const field of app.common_field_values) {
+                          if (field.file_path) {
+                            const fieldName = (field.field_name || '').toLowerCase()
+                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
+                            if (isImage && (fieldName.includes('photo') || fieldName.includes('picture') || fieldName.includes('profile') || fieldName.includes('image') || fieldName.includes('avatar'))) {
+                              profilePicture = field.file_path
+                              console.log('[Profile] Found profile picture:', profilePicture)
+                              break
+                            }
                           }
                         }
                       }
-                    }
-                    // Check prize-specific fields
-                    const awardSpecificFields = getAwardSpecificFieldValues(app)
-                    if (!profilePicture && awardSpecificFields.length > 0) {
-                      for (const field of awardSpecificFields) {
-                        if (field.file_path) {
-                          const fieldName = (field.field_name || '').toLowerCase()
-                          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
-                          if (isImage && (fieldName.includes('photo') || fieldName.includes('picture') || fieldName.includes('profile') || fieldName.includes('image') || fieldName.includes('avatar'))) {
-                            profilePicture = field.file_path
-                            console.log('[Profile] Found profile picture:', profilePicture)
-                            break
+                      // Check prize-specific fields
+                      const awardSpecificFields = getAwardSpecificFieldValues(app)
+                      if (!profilePicture && awardSpecificFields.length > 0) {
+                        for (const field of awardSpecificFields) {
+                          if (field.file_path) {
+                            const fieldName = (field.field_name || '').toLowerCase()
+                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
+                            if (isImage && (fieldName.includes('photo') || fieldName.includes('picture') || fieldName.includes('profile') || fieldName.includes('image') || fieldName.includes('avatar'))) {
+                              profilePicture = field.file_path
+                              console.log('[Profile] Found profile picture:', profilePicture)
+                              break
+                            }
                           }
                         }
                       }
+                      if (profilePicture) break
                     }
-                    if (profilePicture) break
                   }
-                }
-                if (!profilePicture) {
-                  console.log('[Profile] No profile picture found, using fallback')
-                }
+                  if (!profilePicture) {
+                    console.log('[Profile] No profile picture found, using fallback')
+                  }
                   return (
                     <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8 lg:gap-10 pb-6 sm:pb-8 border-b-2 border-border/40 mb-6 sm:mb-8">
                       <div className="flex-1 space-y-3 sm:space-y-4 w-full">
@@ -911,8 +912,8 @@ export default function AdminApplicationsPage() {
                       <div className="h-32 w-32 sm:h-40 sm:w-40 lg:h-48 lg:w-48 shrink-0 rounded-xl overflow-hidden bg-muted border-4 border-background shadow-lg flex items-center justify-center mx-auto sm:mx-0">
                         <Avatar className="h-full w-full rounded-xl">
                           {profilePicture ? (
-                            <AvatarImage 
-                              src={getFileUrl(profilePicture)} 
+                            <AvatarImage
+                              src={getFileUrl(profilePicture)}
                               alt={userProfileData.user.full_name}
                               className="object-cover"
                             />
@@ -979,217 +980,241 @@ export default function AdminApplicationsPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-2">
-                {userProfileData.applications && userProfileData.applications.length > 0 ? (
-                  (() => {
-                    // Group applications by prize_id or prize_title
-                    const groupedByPrize: { [key: string]: any[] } = {}
-                    userProfileData.applications.forEach((app: any) => {
-                      const prizeKey = app.prize_id || app.prize_title || "Unknown Award"
-                      if (!groupedByPrize[prizeKey]) {
-                        groupedByPrize[prizeKey] = []
-                      }
-                      groupedByPrize[prizeKey].push(app)
-                    })
+                    {userProfileData.applications && userProfileData.applications.length > 0 ? (
+                      (() => {
+                        // Group applications by prize_id or prize_title
+                        const groupedByPrize: { [key: string]: any[] } = {}
+                        userProfileData.applications.forEach((app: any) => {
+                          const prizeKey = app.prize_id || app.prize_title || "Unknown Award"
+                          if (!groupedByPrize[prizeKey]) {
+                            groupedByPrize[prizeKey] = []
+                          }
+                          groupedByPrize[prizeKey].push(app)
+                        })
 
-                    return (
-                      <Accordion type="single" collapsible className="w-full space-y-3">
-                        {Object.entries(groupedByPrize).map(([prizeKey, prizeApplications]) => {
-                          const prizeTitle = prizeApplications[0]?.prize_title || prizeKey
-                          
-                          // Get all statuses for this award
-                          const statuses = prizeApplications.map((app: any) => mapStatusToUI(app.status))
-                          const hasApproved = statuses.includes("Approved")
-                          const hasRejected = statuses.includes("Rejected")
-                          const hasPending = statuses.includes("Pending") || statuses.includes("Under Review")
-                          
-                          return (
-                            <AccordionItem key={prizeKey} value={prizeKey} className="border-2 border-border rounded-xl px-3 sm:px-4 lg:px-5 bg-card shadow-sm hover:shadow-md transition-shadow">
-                              <AccordionTrigger className="hover:no-underline py-3 sm:py-4 lg:py-5">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full pr-2 sm:pr-4 gap-2 sm:gap-0">
-                                  <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                                    <span className="font-semibold text-base sm:text-lg break-words">{prizeTitle}</span>
-                                    <span className="text-xs sm:text-sm text-muted-foreground font-medium">
-                                      ({prizeApplications.length} application{prizeApplications.length !== 1 ? 's' : ''})
-                                    </span>
-                                  </div>
-                                  <div className="flex gap-2 flex-wrap">
-                                    {hasApproved && (
-                                      <Badge className="bg-green-500 text-white text-xs px-2 sm:px-2.5 py-0.5 sm:py-1">Approved</Badge>
-                                    )}
-                                    {hasRejected && (
-                                      <Badge className="bg-red-500 text-white text-xs px-2 sm:px-2.5 py-0.5 sm:py-1">Rejected</Badge>
-                                    )}
-                                    {hasPending && (
-                                      <Badge className="bg-yellow-500 text-white text-xs px-2 sm:px-2.5 py-0.5 sm:py-1">Pending</Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                                <div className="space-y-4 sm:space-y-6">
-                                  {prizeApplications.map((app: any, appIdx: number) => {
-                                    // Extract profile picture to exclude it from documents
-                                    let profilePicturePath: string | null = null
-                                    if (app.common_field_values) {
-                                      for (const field of app.common_field_values) {
-                                        if (field.file_path) {
-                                          const fieldName = (field.field_name || '').toLowerCase()
-                                          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
-                                          if (isImage && (fieldName.includes('photo') || fieldName.includes('picture') || fieldName.includes('profile') || fieldName.includes('image') || fieldName.includes('avatar'))) {
-                                            profilePicturePath = field.file_path
-                                            break
-                                          }
-                                        }
-                                      }
-                                    }
-                                    const awardSpecificFields = getAwardSpecificFieldValues(app)
-                                    if (!profilePicturePath && awardSpecificFields.length > 0) {
-                                      for (const field of awardSpecificFields) {
-                                        if (field.file_path) {
-                                          const fieldName = (field.field_name || '').toLowerCase()
-                                          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
-                                          if (isImage && (fieldName.includes('photo') || fieldName.includes('picture') || fieldName.includes('profile') || fieldName.includes('image') || fieldName.includes('avatar'))) {
-                                            profilePicturePath = field.file_path
-                                            break
-                                          }
-                                        }
-                                      }
-                                    }
-                                    
-                                    // Collect all documents from this application, excluding profile picture
-                                    const documents: string[] = []
-                                    if (app.common_field_values) {
-                                      app.common_field_values.forEach((field: any) => {
-                                        if (field.file_path && field.file_path !== profilePicturePath) {
-                                          documents.push(field.file_path)
-                                        }
-                                      })
-                                    }
-                                    if (awardSpecificFields.length > 0) {
-                                      awardSpecificFields.forEach((field: any) => {
-                                        if (field.file_path && field.file_path !== profilePicturePath) {
-                                          documents.push(field.file_path)
-                                        }
-                                      })
-                                    }
+                        return (
+                          <Accordion type="single" collapsible className="w-full space-y-3">
+                            {Object.entries(groupedByPrize).map(([prizeKey, prizeApplications]) => {
+                              const prizeTitle = prizeApplications[0]?.prize_title || prizeKey
 
-                                    return (
-                                      <div key={app.application_id || appIdx} className="bg-muted/50 p-4 sm:p-5 lg:p-6 rounded-xl border-2 border-border shadow-sm hover:shadow-md transition-shadow space-y-4 sm:space-y-6">
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 pb-3 sm:pb-4 border-b-2 border-border">
-                                          <div className="space-y-1">
-                                            <p className="font-semibold text-base sm:text-lg">Application #{String(app.application_id).padStart(3, '0')}</p>
-                                            <p className="text-xs sm:text-sm text-muted-foreground">
-                                              Submitted: {formatDate(app.submitted_at || app.created_at)}
-                                            </p>
-                                          </div>
-                                          <Badge
-                                            className={
-                                              mapStatusToUI(app.status) === "Approved"
-                                                ? "bg-green-500 text-white hover:bg-green-600 text-xs sm:text-sm px-2 sm:px-3 py-1 self-start sm:self-auto"
-                                                : mapStatusToUI(app.status) === "Rejected"
-                                                  ? "bg-red-500 text-white hover:bg-red-600 text-xs sm:text-sm px-2 sm:px-3 py-1 self-start sm:self-auto"
-                                                  : "bg-white text-gray-900 border-2 border-gray-300 hover:bg-gray-50 text-xs sm:text-sm px-2 sm:px-3 py-1 self-start sm:self-auto"
-                                            }
-                                          >
-                                            {mapStatusToUI(app.status)}
-                                          </Badge>
-                                        </div>
+                              // Get all statuses for this award
+                              const statuses = prizeApplications.map((app: any) => mapStatusToUI(app.status))
+                              const hasApproved = statuses.includes("Approved")
+                              const hasRejected = statuses.includes("Rejected")
+                              const hasPending = statuses.includes("Pending") || statuses.includes("Under Review")
 
-                                        {/* Common Fields */}
-                                        {app.common_field_values && app.common_field_values.length > 0 && (
-                                          <div className="space-y-2 sm:space-y-3">
-                                            <h4 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2">
-                                              <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                                              Common Information
-                                            </h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                              {app.common_field_values.map((field: any, idx: number) => (
-                                                <div key={idx} className="bg-background p-3 sm:p-4 rounded-lg border space-y-1.5">
-                                                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{field.field_name}</span>
-                                                  <div className="mt-1">
-                                                    {field.file_path ? (
-                                                      <a 
-                                                        href={getFileUrl(field.file_path)} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
-                                                        className="text-xs sm:text-sm text-primary hover:underline break-all font-medium"
-                                                      >
-                                                        {field.file_path.split('/').pop()}
-                                                      </a>
-                                                    ) : (
-                                                      <span className="text-xs sm:text-sm text-foreground break-words">{field.value || "N/A"}</span>
-                                                    )}
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
+                              return (
+                                <AccordionItem key={prizeKey} value={prizeKey} className="border-2 border-border rounded-xl px-3 sm:px-4 lg:px-5 bg-card shadow-sm hover:shadow-md transition-shadow">
+                                  <AccordionTrigger className="hover:no-underline py-3 sm:py-4 lg:py-5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full pr-2 sm:pr-4 gap-2 sm:gap-0">
+                                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                                        <span className="font-semibold text-base sm:text-lg break-words">{prizeTitle}</span>
+                                        <span className="text-xs sm:text-sm text-muted-foreground font-medium">
+                                          ({prizeApplications.length} application{prizeApplications.length !== 1 ? 's' : ''})
+                                        </span>
+                                      </div>
+                                      <div className="flex gap-2 flex-wrap">
+                                        {hasApproved && (
+                                          <Badge className="bg-green-500 text-white text-xs px-2 sm:px-2.5 py-0.5 sm:py-1">Approved</Badge>
                                         )}
-
-                                        {/* Prize-Specific Fields */}
-                                        {awardSpecificFields.length > 0 && (
-                                          <div className="space-y-2 sm:space-y-3">
-                                            <h4 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2">
-                                              <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                                              Award-Specific Information
-                                            </h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                              {awardSpecificFields.map((field: any, idx: number) => (
-                                                <div key={idx} className="bg-background p-3 sm:p-4 rounded-lg border space-y-1.5">
-                                                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{field.field_name}</span>
-                                                  <div className="mt-1">
-                                                    {field.file_path ? (
-                                                      <a 
-                                                        href={getFileUrl(field.file_path)} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
-                                                        className="text-xs sm:text-sm text-primary hover:underline break-all font-medium"
-                                                      >
-                                                        {field.file_path.split('/').pop()}
-                                                      </a>
-                                                    ) : (
-                                                      <span className="text-xs sm:text-sm text-foreground break-words">{field.value || "N/A"}</span>
-                                                    )}
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
+                                        {hasRejected && (
+                                          <Badge className="bg-red-500 text-white text-xs px-2 sm:px-2.5 py-0.5 sm:py-1">Rejected</Badge>
                                         )}
-
-                                        {/* Documents for this application */}
-                                        {documents.length > 0 && (
-                                          <div className="space-y-2 sm:space-y-3">
-                                            <h4 className="text-xs sm:text-sm font-semibold text-foreground">Attached Files</h4>
-                                            <div className="flex flex-wrap gap-2 sm:gap-3">
-                                              {documents.map((doc, idx) => (
-                                                <a
-                                                  key={idx}
-                                                  href={getFileUrl(doc)}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="h-16 w-24 sm:h-20 sm:w-32 bg-background rounded-lg flex items-center justify-center text-xs border-2 border-border hover:border-primary hover:bg-accent cursor-pointer transition-all p-2 sm:p-3 text-center break-all shadow-sm hover:shadow-md"
-                                                >
-                                                  <span className="line-clamp-2">{doc.split('/').pop()}</span>
-                                                </a>
-                                              ))}
-                                            </div>
-                                          </div>
+                                        {hasPending && (
+                                          <Badge className="bg-yellow-500 text-white text-xs px-2 sm:px-2.5 py-0.5 sm:py-1">Pending</Badge>
                                         )}
                                       </div>
-                                    )
-                                  })}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          )
-                        })}
-                      </Accordion>
-                    )
-                  })()
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">No applications found</p>
-                  )}
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                                    <div className="space-y-4 sm:space-y-6">
+                                      {prizeApplications.map((app: any, appIdx: number) => {
+                                        // Extract profile picture to exclude it from documents
+                                        let profilePicturePath: string | null = null
+                                        if (app.common_field_values) {
+                                          for (const field of app.common_field_values) {
+                                            if (field.file_path) {
+                                              const fieldName = (field.field_name || '').toLowerCase()
+                                              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
+                                              if (isImage && (fieldName.includes('photo') || fieldName.includes('picture') || fieldName.includes('profile') || fieldName.includes('image') || fieldName.includes('avatar'))) {
+                                                profilePicturePath = field.file_path
+                                                break
+                                              }
+                                            }
+                                          }
+                                        }
+                                        const awardSpecificFields = getAwardSpecificFieldValues(app)
+                                        if (!profilePicturePath && awardSpecificFields.length > 0) {
+                                          for (const field of awardSpecificFields) {
+                                            if (field.file_path) {
+                                              const fieldName = (field.field_name || '').toLowerCase()
+                                              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(field.file_path)
+                                              if (isImage && (fieldName.includes('photo') || fieldName.includes('picture') || fieldName.includes('profile') || fieldName.includes('image') || fieldName.includes('avatar'))) {
+                                                profilePicturePath = field.file_path
+                                                break
+                                              }
+                                            }
+                                          }
+                                        }
+
+                                        // Collect all documents from this application, excluding profile picture
+                                        const documents: string[] = []
+                                        if (app.common_field_values) {
+                                          app.common_field_values.forEach((field: any) => {
+                                            if (field.file_path && field.file_path !== profilePicturePath) {
+                                              documents.push(field.file_path)
+                                            }
+                                          })
+                                        }
+                                        if (awardSpecificFields.length > 0) {
+                                          awardSpecificFields.forEach((field: any) => {
+                                            if (field.file_path && field.file_path !== profilePicturePath) {
+                                              documents.push(field.file_path)
+                                            }
+                                          })
+                                        }
+
+                                        return (
+                                          <div key={app.application_id || appIdx} className="bg-muted/50 p-4 sm:p-5 lg:p-6 rounded-xl border-2 border-border shadow-sm hover:shadow-md transition-shadow space-y-4 sm:space-y-6">
+                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 pb-3 sm:pb-4 border-b-2 border-border">
+                                              <div className="space-y-1">
+                                                <p className="font-semibold text-base sm:text-lg">Application #{String(app.application_id).padStart(3, '0')}</p>
+                                                <p className="text-xs sm:text-sm text-muted-foreground">
+                                                  Submitted: {formatDate(app.submitted_at || app.created_at)}
+                                                </p>
+                                              </div>
+                                              <Badge
+                                                className={
+                                                  mapStatusToUI(app.status) === "Approved"
+                                                    ? "bg-green-500 text-white hover:bg-green-600 text-xs sm:text-sm px-2 sm:px-3 py-1 self-start sm:self-auto"
+                                                    : mapStatusToUI(app.status) === "Rejected"
+                                                      ? "bg-red-500 text-white hover:bg-red-600 text-xs sm:text-sm px-2 sm:px-3 py-1 self-start sm:self-auto"
+                                                      : "bg-white text-gray-900 border-2 border-gray-300 hover:bg-gray-50 text-xs sm:text-sm px-2 sm:px-3 py-1 self-start sm:self-auto"
+                                                }
+                                              >
+                                                {mapStatusToUI(app.status)}
+                                              </Badge>
+                                            </div>
+
+                                            {/* Common Fields */}
+                                            {app.common_field_values && app.common_field_values.length > 0 && (
+                                              <div className="space-y-2 sm:space-y-3">
+                                                <h4 className="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
+                                                  <FileText className="h-4 w-4 text-primary" />
+                                                  Common Information
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                                  {app.common_field_values.map((field: any, idx: number) => {
+                                                    const isTextarea = field.field_type === 'textarea' || (typeof field.value === 'string' && (field.value.length > 80 || field.value.includes('\n')))
+                                                    const labelText = field.field_name ? (field.field_name.endsWith(':') ? field.field_name : `${field.field_name}:`) : ''
+                                                    return (
+                                                      <div
+                                                        key={idx}
+                                                        className={cn(
+                                                          "bg-background p-3 sm:p-4 rounded-lg border space-y-1.5",
+                                                          isTextarea ? "col-span-1 sm:col-span-2" : "col-span-1"
+                                                        )}
+                                                      >
+                                                        <span className="text-sm sm:text-base font-semibold text-foreground">{labelText}</span>
+                                                        <div className="mt-1">
+                                                          {field.file_path ? (
+                                                            <a
+                                                              href={getFileUrl(field.file_path)}
+                                                              target="_blank"
+                                                              rel="noopener noreferrer"
+                                                              className="text-sm sm:text-base text-primary hover:underline break-all font-medium inline-block"
+                                                            >
+                                                              {field.file_path.split('/').pop()}
+                                                            </a>
+                                                          ) : (
+                                                            <p className={cn("text-sm sm:text-base text-foreground/90 break-words", isTextarea && "whitespace-pre-wrap text-justify leading-relaxed")}>
+                                                              {field.value || "N/A"}
+                                                            </p>
+                                                          )}
+                                                        </div>
+                                                      </div>
+                                                    )
+                                                  })}
+                                                </div>
+                                              </div>
+                                            )}
+
+                                            {/* Prize-Specific Fields */}
+                                            {awardSpecificFields.length > 0 && (
+                                              <div className="space-y-2 sm:space-y-3">
+                                                <h4 className="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
+                                                  <FileText className="h-4 w-4 text-primary" />
+                                                  Award-Specific Information
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                                  {awardSpecificFields.map((field: any, idx: number) => {
+                                                    const isTextarea = field.field_type === 'textarea' || (typeof field.value === 'string' && (field.value.length > 80 || field.value.includes('\n')))
+                                                    const labelText = field.field_name ? (field.field_name.endsWith(':') ? field.field_name : `${field.field_name}:`) : ''
+                                                    return (
+                                                      <div
+                                                        key={idx}
+                                                        className={cn(
+                                                          "bg-background p-3 sm:p-4 rounded-lg border space-y-1.5",
+                                                          isTextarea ? "col-span-1 sm:col-span-2" : "col-span-1"
+                                                        )}
+                                                      >
+                                                        <span className="text-sm sm:text-base font-semibold text-foreground">{labelText}</span>
+                                                        <div className="mt-1">
+                                                          {field.file_path ? (
+                                                            <a
+                                                              href={getFileUrl(field.file_path)}
+                                                              target="_blank"
+                                                              rel="noopener noreferrer"
+                                                              className="text-sm sm:text-base text-primary hover:underline break-all font-medium inline-block"
+                                                            >
+                                                              {field.file_path.split('/').pop()}
+                                                            </a>
+                                                          ) : (
+                                                            <p className={cn("text-sm sm:text-base text-foreground/90 break-words", isTextarea && "whitespace-pre-wrap text-justify leading-relaxed")}>
+                                                              {field.value || "N/A"}
+                                                            </p>
+                                                          )}
+                                                        </div>
+                                                      </div>
+                                                    )
+                                                  })}
+                                                </div>
+                                              </div>
+                                            )}
+
+                                            {/* Documents for this application */}
+                                            {documents.length > 0 && (
+                                              <div className="space-y-2 sm:space-y-3">
+                                                <h4 className="text-xs sm:text-sm font-semibold text-foreground">Attached Files</h4>
+                                                <div className="flex flex-wrap gap-2 sm:gap-3">
+                                                  {documents.map((doc, idx) => (
+                                                    <a
+                                                      key={idx}
+                                                      href={getFileUrl(doc)}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="h-16 w-24 sm:h-20 sm:w-32 bg-background rounded-lg flex items-center justify-center text-xs border-2 border-border hover:border-primary hover:bg-accent cursor-pointer transition-all p-2 sm:p-3 text-center break-all shadow-sm hover:shadow-md"
+                                                    >
+                                                      <span className="line-clamp-2">{doc.split('/').pop()}</span>
+                                                    </a>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              )
+                            })}
+                          </Accordion>
+                        )
+                      })()
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-8">No applications found</p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1214,9 +1239,9 @@ export default function AdminApplicationsPage() {
               {confirmDialog.action === "Approved" ? "Approve Application?" : "Reject Application?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to {confirmDialog.action === "Approved" ? "approve" : "reject"} application APP-{String(confirmDialog.applicationId || "").padStart(3, '0')}? 
-              {confirmDialog.action === "Approved" 
-                ? " An approval email will be sent automatically." 
+              Are you sure you want to {confirmDialog.action === "Approved" ? "approve" : "reject"} application APP-{String(confirmDialog.applicationId || "").padStart(3, '0')}?
+              {confirmDialog.action === "Approved"
+                ? " An approval email will be sent automatically."
                 : " You will be able to compose a rejection email."}
             </AlertDialogDescription>
           </AlertDialogHeader>

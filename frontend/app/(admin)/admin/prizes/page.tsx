@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Pencil, Archive, Search, Loader2, ToggleLeft, ToggleRight, MoreHorizontal, FileText, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Plus, Pencil, Archive, Search, Loader2, ToggleLeft, ToggleRight, MoreHorizontal, FileText, Trash2, Award } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -88,6 +88,7 @@ export default function AdminPrizesPage() {
   })
 
   const [editPrize, setEditPrize] = useState<Prize | null>(null)
+  const [viewingDescription, setViewingDescription] = useState<{ title: string; description: string } | null>(null)
 
   // Prize-specific field management
   const [isFieldsDialogOpen, setIsFieldsDialogOpen] = useState(false)
@@ -255,39 +256,44 @@ export default function AdminPrizesPage() {
 
     return (
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Award</DialogTitle>
-            <DialogDescription>Update the award details and save.</DialogDescription>
+        <DialogContent className="w-[94vw] sm:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border">
+          <DialogHeader className="p-6 border-b bg-muted/20 flex-shrink-0">
+            <DialogTitle className="text-xl font-bold">Edit Award</DialogTitle>
+            <DialogDescription>Update the award details, description, and dates below.</DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Title</Label>
-              <Input value={editPrize.title} disabled />
+          <div className="flex-1 overflow-y-auto p-6 space-y-5 max-h-[62vh] custom-scrollbar bg-card">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
+              <Input value={editPrize.title} disabled className="bg-muted/40 font-medium" />
             </div>
 
-            <div className="grid gap-2">
-              <Label>Description</Label>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                <span className="text-[11px] text-muted-foreground">
+                  {editPrize.description ? `${editPrize.description.split(/\s+/).filter(Boolean).length} words` : "0 words"}
+                </span>
+              </div>
               <Textarea
                 value={editPrize.description || ""}
                 onChange={(e) => setEditPrize({ ...editPrize, description: e.target.value })}
-                placeholder="Enter award description"
-                rows={4}
+                placeholder="Enter comprehensive award description and guidelines..."
+                className="min-h-[160px] max-h-[260px] overflow-y-auto font-sans leading-relaxed text-sm bg-muted/10"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Open Date *</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Open Date *</Label>
                 <Input
                   type="date"
                   value={editPrize.open_date || ""}
                   onChange={(e) => setEditPrize({ ...editPrize, open_date: e.target.value })}
                 />
               </div>
-              <div className="grid gap-2">
-                <Label>Close Date *</Label>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Close Date *</Label>
                 <Input
                   type="date"
                   value={editPrize.close_date || ""}
@@ -296,20 +302,23 @@ export default function AdminPrizesPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 pt-2">
               <Checkbox
+                id="edit-active-status"
                 checked={editPrize.is_active === false ? false : Boolean(editPrize.is_active)}
                 disabled
               />
-              <Label>Active</Label>
+              <Label htmlFor="edit-active-status" className="text-sm font-medium text-muted-foreground">
+                Active Status (Use action toggle in table to change status)
+              </Label>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+          <DialogFooter className="p-4 border-t bg-muted/15 flex-shrink-0 flex items-center justify-end gap-2.5">
+            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl px-5">
               Cancel
             </Button>
-            <Button onClick={handleUpdate} disabled={updating}>
+            <Button onClick={handleUpdate} disabled={updating} className="rounded-xl px-6">
               {updating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Save Changes
             </Button>
@@ -541,6 +550,41 @@ export default function AdminPrizesPage() {
     <div className="space-y-8 p-8">
       {renderEditDialog()}
 
+      {/* View Full Description Dialog (Almost Full Screen & Scrollable) */}
+      <Dialog open={Boolean(viewingDescription)} onOpenChange={(open) => !open && setViewingDescription(null)}>
+        <DialogContent className="w-[94vw] sm:max-w-4xl lg:max-w-5xl max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border">
+          <DialogHeader className="p-6 border-b bg-muted/20 flex-shrink-0">
+            <div className="space-y-1.5 text-left">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                <Award className="h-3.5 w-3.5" />
+                <span>Award Details</span>
+              </div>
+              <DialogTitle className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+                {viewingDescription?.title}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Official award overview and guidelines description
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 max-h-[62vh] custom-scrollbar bg-card">
+            <div className="text-sm md:text-base leading-relaxed whitespace-pre-wrap text-foreground/90 bg-muted/15 p-6 rounded-xl border border-border/70 font-sans select-text">
+              {viewingDescription?.description || "No description provided."}
+            </div>
+          </div>
+
+          <DialogFooter className="p-4 border-t bg-muted/15 flex-shrink-0 flex items-center justify-between sm:justify-between">
+            <span className="text-xs text-muted-foreground">
+              {viewingDescription?.description ? `${viewingDescription.description.split(/\s+/).filter(Boolean).length} words` : ''}
+            </span>
+            <Button variant="default" onClick={() => setViewingDescription(null)} className="rounded-xl px-6">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t("admin.prize.title")}</h1>
@@ -553,32 +597,40 @@ export default function AdminPrizesPage() {
               <Plus className="mr-2 h-4 w-4" /> {t("admin.prize.create")}
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("admin.prize.create")}</DialogTitle>
-              <DialogDescription>Fill the form to add a new award.</DialogDescription>
+          <DialogContent className="w-[94vw] sm:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border">
+            <DialogHeader className="p-6 border-b bg-muted/20 flex-shrink-0">
+              <DialogTitle className="text-xl font-bold">{t("admin.prize.create")}</DialogTitle>
+              <DialogDescription>Fill in the award details, description, and application dates.</DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Title *</Label>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 max-h-[62vh] custom-scrollbar bg-card">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title *</Label>
                 <Input
                   value={newPrize.title}
                   onChange={(e) => setNewPrize({ ...newPrize, title: e.target.value })}
+                  placeholder="e.g., National Science & Technology Award"
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label>Description</Label>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                  <span className="text-[11px] text-muted-foreground">
+                    {newPrize.description ? `${newPrize.description.split(/\s+/).filter(Boolean).length} words` : "0 words"}
+                  </span>
+                </div>
                 <Textarea
                   value={newPrize.description}
                   onChange={(e) => setNewPrize({ ...newPrize, description: e.target.value })}
+                  placeholder="Enter award description, eligibility criteria, and instructions..."
+                  className="min-h-[160px] max-h-[260px] overflow-y-auto font-sans leading-relaxed text-sm bg-muted/10"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Open Date *</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Open Date *</Label>
                   <Input
                     type="date"
                     value={newPrize.open_date}
@@ -586,8 +638,8 @@ export default function AdminPrizesPage() {
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label>Close Date *</Label>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Close Date *</Label>
                   <Input
                     type="date"
                     value={newPrize.close_date}
@@ -596,24 +648,27 @@ export default function AdminPrizesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5 pt-2">
                 <Checkbox
+                  id="new-active-status"
                   checked={newPrize.is_active}
                   onCheckedChange={(checked) =>
                     setNewPrize({ ...newPrize, is_active: checked as boolean })
                   }
                 />
-                <Label>Active</Label>
+                <Label htmlFor="new-active-status" className="text-sm font-medium cursor-pointer">
+                  Set as Active Award
+                </Label>
               </div>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            <DialogFooter className="p-4 border-t bg-muted/15 flex-shrink-0 flex items-center justify-end gap-2.5">
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="rounded-xl px-5">
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={submitting}>
+              <Button onClick={handleCreate} disabled={submitting} className="rounded-xl px-6">
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create
+                Create Award
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -650,26 +705,36 @@ export default function AdminPrizesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Open Date</TableHead>
-                  <TableHead>Close Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-16">ID</TableHead>
+                  <TableHead className="w-52">Title</TableHead>
+                  <TableHead className="min-w-[180px] max-w-[300px]">Description</TableHead>
+                  <TableHead className="w-28">Open Date</TableHead>
+                  <TableHead className="w-28">Close Date</TableHead>
+                  <TableHead className="w-24">Status</TableHead>
+                  <TableHead className="w-44 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
                 {filteredPrizes.map((p) => (
                   <TableRow key={p.prize_id}>
-                    <TableCell>{p.prize_id}</TableCell>
-                    <TableCell>{p.title}</TableCell>
-                    <TableCell className="max-w-md truncate">
-                      {p.description || "-"}
+                    <TableCell className="font-mono text-xs">{p.prize_id}</TableCell>
+                    <TableCell className="font-medium text-sm">{p.title}</TableCell>
+                    <TableCell className="min-w-[180px] max-w-[300px]">
+                      {p.description ? (
+                        <div
+                          onClick={() => setViewingDescription({ title: p.title, description: p.description || "" })}
+                          className="line-clamp-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground hover:underline transition-colors"
+                          title="Click to view full description"
+                        >
+                          {p.description}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </TableCell>
-                    <TableCell>{new Date(p.open_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(p.close_date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{new Date(p.open_date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{new Date(p.close_date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge
                         className={

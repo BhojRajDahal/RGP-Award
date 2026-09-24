@@ -619,12 +619,12 @@ export default function PrizesPage() {
           </div>
         )}
 
-        {/* Enhanced Detail Dialog */}
+        {/* Enhanced Detail Dialog (Almost Full Screen with Justified Text) */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[94vw] sm:max-w-4xl lg:max-w-5xl max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border">
             {selectedPrize && (
               <>
-                <DialogHeader>
+                <DialogHeader className="p-6 border-b bg-muted/20 flex-shrink-0">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant={selectedPrize.is_active ? "default" : "secondary"}>
@@ -643,76 +643,88 @@ export default function PrizesPage() {
                         </Badge>
                       )}
                     </div>
-                    <span className="text-sm text-muted-foreground font-mono">
+                    <span className="text-xs text-muted-foreground font-mono bg-muted/60 px-2.5 py-1 rounded-md border">
                       ID: PRZ-{selectedPrize.prize_id}
                     </span>
                   </div>
-                  <DialogTitle className="text-2xl mt-4">{selectedPrize.title}</DialogTitle>
+                  <DialogTitle className="text-xl md:text-2xl font-bold tracking-tight text-foreground text-left mt-3">
+                    {selectedPrize.title}
+                  </DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className="font-semibold mb-2 text-foreground">Description</h4>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                        {selectedPrize.description || "No description available."}
-                      </p>
+
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 max-h-[62vh] custom-scrollbar bg-card">
+                  <div className="space-y-2.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Award Description & Overview
+                    </h4>
+                    <div className="text-sm md:text-base leading-relaxed whitespace-pre-wrap text-foreground/90 text-justify bg-muted/15 p-5 md:p-6 rounded-xl border border-border/70 font-sans select-text">
+                      {selectedPrize.description || "No description available."}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                      <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                        <Calendar className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="font-semibold text-sm">Opening Date</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(selectedPrize.open_date)}
-                          </p>
-                        </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="flex items-start gap-3.5 p-4 bg-muted/25 rounded-xl border border-border/60">
+                      <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
+                        <Calendar className="h-5 w-5" />
                       </div>
-                      <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                        <Clock className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="font-semibold text-sm">Closing Date</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(selectedPrize.close_date)}
-                          </p>
-                          {getDaysUntilDeadline(selectedPrize.close_date) > 0 &&
-                            getDaysUntilDeadline(selectedPrize.close_date) <= 30 && (
-                              <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                                {getDaysUntilDeadline(selectedPrize.close_date)}{" "}
-                                {getDaysUntilDeadline(selectedPrize.close_date) === 1
-                                  ? "day"
-                                  : "days"}{" "}
-                                remaining
-                              </p>
-                            )}
-                        </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Opening Date</p>
+                        <p className="text-sm font-semibold text-foreground mt-0.5">
+                          {formatDate(selectedPrize.open_date)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3.5 p-4 bg-muted/25 rounded-xl border border-border/60">
+                      <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Closing Date</p>
+                        <p className="text-sm font-semibold text-foreground mt-0.5">
+                          {formatDate(selectedPrize.close_date)}
+                        </p>
+                        {getDaysUntilDeadline(selectedPrize.close_date) > 0 &&
+                          getDaysUntilDeadline(selectedPrize.close_date) <= 30 && (
+                            <p className="text-xs text-orange-600 dark:text-orange-400 font-medium mt-1">
+                              {getDaysUntilDeadline(selectedPrize.close_date)}{" "}
+                              {getDaysUntilDeadline(selectedPrize.close_date) === 1
+                                ? "day"
+                                : "days"}{" "}
+                              remaining
+                            </p>
+                          )}
                       </div>
                     </div>
                   </div>
                 </div>
-                <DialogFooter className="flex-col sm:flex-row gap-2">
+
+                <DialogFooter className="p-4 border-t bg-muted/15 flex-shrink-0 flex items-center justify-between sm:justify-between gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setDialogOpen(false)}
-                    className="w-full sm:w-auto"
+                    className="rounded-xl px-5"
                   >
                     Close
                   </Button>
-                  {isAuthenticated && !isAdmin && (selectedPrize.is_active === true || selectedPrize.is_active === 1) && (
-                    <Link href={`/prizes/${selectedPrize.prize_id}/apply`} className="w-full sm:w-auto">
-                      <Button className="w-full shadow-md hover:shadow-lg transition-all">
-                        Apply Now
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                  )}
-                  {!isAuthenticated && (selectedPrize.is_active === true || selectedPrize.is_active === 1) && (
-                    <Link href="/login" className="w-full sm:w-auto">
-                      <Button className="w-full shadow-md hover:shadow-lg transition-all">
-                        Login to Apply
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                  )}
+                  <div className="flex gap-2.5">
+                    {isAuthenticated && !isAdmin && (selectedPrize.is_active === true || selectedPrize.is_active === 1) && (
+                      <Link href={`/prizes/${selectedPrize.prize_id}/apply`}>
+                        <Button className="rounded-xl px-6 shadow-md hover:shadow-lg transition-all">
+                          Apply Now
+                          <ExternalLink className="h-4 w-4 ml-2" />
+                        </Button>
+                      </Link>
+                    )}
+                    {!isAuthenticated && (selectedPrize.is_active === true || selectedPrize.is_active === 1) && (
+                      <Link href="/login">
+                        <Button className="rounded-xl px-6 shadow-md hover:shadow-lg transition-all">
+                          Login to Apply
+                          <ExternalLink className="h-4 w-4 ml-2" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </DialogFooter>
               </>
             )}

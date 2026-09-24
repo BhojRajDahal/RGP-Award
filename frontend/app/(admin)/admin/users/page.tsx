@@ -45,13 +45,10 @@ interface Admin {
   created_at?: string
 }
 
-const USERS_PER_PAGE = 10
-
 export default function AdminUsersPage() {
   const { t } = useTranslation()
   const [users, setUsers] = useState<User[]>([])
   const [admins, setAdmins] = useState<Admin[]>([])
-  const [currentUsersPage, setCurrentUsersPage] = useState(1)
   const [isLoadingUsers, setIsLoadingUsers] = useState(true)
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(true)
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -117,18 +114,9 @@ export default function AdminUsersPage() {
     fetchAdmins()
   }, [])
 
-  const totalUserPages = Math.max(1, Math.ceil(users.length / USERS_PER_PAGE))
-  const paginatedUsers = users.slice(
-    (currentUsersPage - 1) * USERS_PER_PAGE,
-    currentUsersPage * USERS_PER_PAGE
-  )
-  const userPageNumbers = Array.from({ length: totalUserPages }, (_, index) => index + 1)
-
-  useEffect(() => {
-    if (currentUsersPage > totalUserPages) {
-      setCurrentUsersPage(totalUserPages)
-    }
-  }, [currentUsersPage, totalUserPages])
+  const topUsers = [...users]
+    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime() || b.id - a.id)
+    .slice(0, 10)
 
   const handleAddAdmin = async () => {
     if (!newAdmin.full_name || !newAdmin.email || !newAdmin.password) {
@@ -305,7 +293,9 @@ export default function AdminUsersPage() {
               <Users className="h-5 w-5 text-blue-600" />
               Regular Users
             </CardTitle>
-            <Badge variant="secondary">{users.length}</Badge>
+            <Badge variant="secondary">
+              {users.length > 10 ? `Top 10 of ${users.length}` : users.length}
+            </Badge>
           </CardHeader>
           <CardContent className="p-0">
             {isLoadingUsers ? (
@@ -328,7 +318,7 @@ export default function AdminUsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedUsers.map((user) => (
+                    {topUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -350,36 +340,6 @@ export default function AdminUsersPage() {
                     ))}
                   </TableBody>
                 </Table>
-                {totalUserPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 border-t px-4 py-4">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setCurrentUsersPage((page) => Math.max(page - 1, 1))}
-                      disabled={currentUsersPage === 1}
-                      className="text-base"
-                    >
-                      Previous
-                    </Button>
-                    {userPageNumbers.map((page) => (
-                      <Button
-                        key={page}
-                        variant={page === currentUsersPage ? "outline" : "ghost"}
-                        onClick={() => setCurrentUsersPage(page)}
-                        className="h-11 min-w-11 text-base"
-                      >
-                        {page}
-                      </Button>
-                    ))}
-                    <Button
-                      variant="ghost"
-                      onClick={() => setCurrentUsersPage((page) => Math.min(page + 1, totalUserPages))}
-                      disabled={currentUsersPage === totalUserPages}
-                      className="text-base"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                )}
               </div>
             )}
           </CardContent>

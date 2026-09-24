@@ -36,6 +36,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 type FieldType = 'text' | 'textarea' | 'number' | 'file' | 'date' | 'label'
 
@@ -881,14 +882,15 @@ export function ApplicationWizard({ prizeId, prize }: { prizeId: string; prize?:
                       {commonFields.filter(isInputField).map(field => {
                         const key = `common_${field.common_field_id}`
                         const value = fieldValues[key]
+                        const isTextarea = field.field_type === 'textarea' || (typeof value?.value === 'string' && (value.value.length > 80 || value.value.includes('\n')))
                         return (
-                          <div key={key} className="space-y-0.5 text-sm">
+                          <div key={key} className={cn("space-y-0.5 text-sm", isTextarea ? "col-span-1 md:col-span-2" : "col-span-1")}>
                             <p className="text-xs text-muted-foreground font-medium">{field.field_name}</p>
-                            <p className="font-medium text-foreground">
+                            <div className={cn("font-medium text-foreground", isTextarea && "whitespace-pre-wrap text-justify leading-relaxed")}>
                               {field.field_type === 'file' 
                                 ? (fileUploads[key]?.name || "Not uploaded")
                                 : (value?.value || "-")}
-                            </p>
+                            </div>
                           </div>
                         )
                       })}
@@ -902,14 +904,15 @@ export function ApplicationWizard({ prizeId, prize }: { prizeId: string; prize?:
                         {prizeSpecificFields.filter(isInputField).map(field => {
                           const key = `specific_${field.prize_specific_field_id}`
                           const value = fieldValues[key]
+                          const isTextarea = field.field_type === 'textarea' || (typeof value?.value === 'string' && (value.value.length > 80 || value.value.includes('\n')))
                           return (
-                            <div key={key} className="space-y-0.5 text-sm">
+                            <div key={key} className={cn("space-y-0.5 text-sm", isTextarea ? "col-span-1 md:col-span-2" : "col-span-1")}>
                               <p className="text-xs text-muted-foreground font-medium">{field.field_name}</p>
-                              <p className="font-medium text-foreground">
+                              <div className={cn("font-medium text-foreground", isTextarea && "whitespace-pre-wrap text-justify leading-relaxed")}>
                                 {field.field_type === 'file' 
                                   ? (fileUploads[key]?.name || "Not uploaded")
                                   : (value?.value || "-")}
-                              </p>
+                              </div>
                             </div>
                           )
                         })}
